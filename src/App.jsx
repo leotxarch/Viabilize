@@ -1727,7 +1727,7 @@ export default function EstudoViabilidadeApp() {
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-[15px] font-semibold text-slate-800 leading-tight">
-              Estudo Analítico de Viabilidade
+              Estudo Analítico de Viabilidade - v2
             </h1>
             <p className="truncate text-[12px] text-slate-400 leading-tight">
               São Paulo · Formulário + indicadores automáticos
