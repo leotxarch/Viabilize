@@ -293,12 +293,12 @@ function SectionCard({ title, subtitle, children }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       {title && (
-        <div className="border-b border-slate-100 px-6 py-4">
+        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
           <h3 className="text-[15px] font-semibold text-slate-800">{title}</h3>
           {subtitle && <p className="mt-0.5 text-[13px] text-slate-400">{subtitle}</p>}
         </div>
       )}
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   );
 }
@@ -790,6 +790,7 @@ const nivelEstacionamentoVazio = () => ({
 
 export default function EstudoViabilidadeApp() {
   const [activeTab, setActiveTab] = useState("terreno");
+  const [identificacaoAberta, setIdentificacaoAberta] = useState(false);
 
   // --- Identificação do estudo (sidebar) ---
   const [cliente, setCliente] = useState("");
@@ -1719,24 +1720,26 @@ export default function EstudoViabilidadeApp() {
         }
       `}</style>
       {/* Top bar */}
-      <header className="no-print flex items-center justify-between border-b border-slate-200 bg-white px-8 py-4">
+      <header className="no-print flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
             <FileText size={18} className="text-white" />
           </div>
-          <div>
-            <h1 className="text-[15px] font-semibold text-slate-800 leading-tight">
-              Estudo Analítico de Viabilidade - v2
+          <div className="min-w-0">
+            <h1 className="truncate text-[15px] font-semibold text-slate-800 leading-tight">
+              Estudo Analítico de Viabilidade
             </h1>
-            <p className="text-[12px] text-slate-400 leading-tight">
+            <p className="truncate text-[12px] text-slate-400 leading-tight">
               São Paulo · Formulário + indicadores automáticos
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5">
             <Gauge size={15} className="text-blue-600" />
-            <span className="text-[12px] font-medium text-blue-600">Índice Privativa/Prefeitura</span>
+            <span className="whitespace-nowrap text-[12px] font-medium text-blue-600">
+              Índice Privativa/Prefeitura
+            </span>
             <span className="text-[14px] font-semibold text-blue-700">
               {agregados.indicePrivativaPrefeitura !== null
                 ? formatNumeroBR(agregados.indicePrivativaPrefeitura)
@@ -1744,7 +1747,7 @@ export default function EstudoViabilidadeApp() {
             </span>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
-            <span className="text-[12px] font-medium text-slate-500">Falta (Estoura)</span>
+            <span className="whitespace-nowrap text-[12px] font-medium text-slate-500">Falta (Estoura)</span>
             <span
               className={`text-[14px] font-semibold ${
                 agregados.faltaEstoura === null
@@ -1790,47 +1793,10 @@ export default function EstudoViabilidadeApp() {
             })}
           </nav>
 
-          <div className="mt-8 rounded-lg bg-slate-50 border border-slate-100 p-3">
-            <p className="text-[12px] font-medium text-slate-500">Identificação do estudo</p>
-            <div className="mt-3 flex flex-col gap-3">
-              <Field
-                label="Cliente"
-                placeholder="Nome do cliente"
-                value={cliente}
-                onChange={(e) => setCliente(e.target.value)}
-              />
-              <Field
-                label="Nome do projeto"
-                placeholder="Ex: Residencial Jardins"
-                value={nomeProjeto}
-                onChange={(e) => setNomeProjeto(e.target.value)}
-              />
-              <Field
-                label="Arquiteto responsável"
-                placeholder="Nome"
-                value={arquitetoResponsavel}
-                onChange={(e) => setArquitetoResponsavel(e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Field
-                  label="Opção"
-                  placeholder="01"
-                  value={opcaoEstudo}
-                  onChange={(e) => setOpcaoEstudo(e.target.value)}
-                />
-                <Field
-                  label="Revisão"
-                  placeholder="R0"
-                  value={revisaoEstudo}
-                  onChange={(e) => setRevisaoEstudo(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 px-8 py-8">
+        <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8">
           <div className="mx-auto max-w-5xl flex flex-col gap-6">
             {/* Mobile tabs */}
             <div className="no-print flex gap-2 overflow-x-auto md:hidden">
@@ -1847,6 +1813,63 @@ export default function EstudoViabilidadeApp() {
                   {tab.label}
                 </button>
               ))}
+            </div>
+
+            {/* Identificação do estudo — visível em qualquer tamanho de tela */}
+            <div className="rounded-lg border border-slate-200 bg-white">
+              <button
+                onClick={() => setIdentificacaoAberta((v) => !v)}
+                className="flex w-full items-center gap-2 px-4 py-3 text-left"
+              >
+                <ChevronRight
+                  size={15}
+                  className={`shrink-0 text-slate-400 transition-transform ${
+                    identificacaoAberta ? "rotate-90" : ""
+                  }`}
+                />
+                <span className="text-[13px] font-medium text-slate-600">Identificação do estudo</span>
+                {!identificacaoAberta && (nomeProjeto || cliente) && (
+                  <span className="ml-1 truncate text-[12px] text-slate-400">
+                    — {[nomeProjeto, cliente].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </button>
+              {identificacaoAberta && (
+                <div className="grid grid-cols-1 gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Field
+                    label="Cliente"
+                    placeholder="Nome do cliente"
+                    value={cliente}
+                    onChange={(e) => setCliente(e.target.value)}
+                  />
+                  <Field
+                    label="Nome do projeto"
+                    placeholder="Ex: Residencial Jardins"
+                    value={nomeProjeto}
+                    onChange={(e) => setNomeProjeto(e.target.value)}
+                  />
+                  <Field
+                    label="Arquiteto responsável"
+                    placeholder="Nome"
+                    value={arquitetoResponsavel}
+                    onChange={(e) => setArquitetoResponsavel(e.target.value)}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field
+                      label="Opção"
+                      placeholder="01"
+                      value={opcaoEstudo}
+                      onChange={(e) => setOpcaoEstudo(e.target.value)}
+                    />
+                    <Field
+                      label="Revisão"
+                      placeholder="R0"
+                      value={revisaoEstudo}
+                      onChange={(e) => setRevisaoEstudo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ---------------- ABA: DADOS DO TERRENO ---------------- */}
@@ -1969,7 +1992,7 @@ export default function EstudoViabilidadeApp() {
                       <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
                         Bônus de potencial construtivo
                       </p>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                           <p className="text-[11px] text-slate-400">CA básico da zona</p>
                           <p className="text-[15px] font-semibold text-slate-800">
@@ -2105,7 +2128,7 @@ export default function EstudoViabilidadeApp() {
                           <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
                             Split da cota — HIS x HMP
                           </p>
-                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <Field
                               label="% destinado a HIS"
                               unit="%"
@@ -2148,7 +2171,7 @@ export default function EstudoViabilidadeApp() {
                               <p className="mb-2 text-[12px] font-semibold text-slate-600">
                                 HIS ({formatNumeroBR(agregados.splitHISNum, 0)}% da cota)
                               </p>
-                              <div className="grid grid-cols-2 gap-2 text-[12px]">
+                              <div className="grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2">
                                 <div>
                                   <p className="text-slate-400">Exigido</p>
                                   <p className="font-semibold text-slate-800">
@@ -2199,7 +2222,7 @@ export default function EstudoViabilidadeApp() {
                               <p className="mb-2 text-[12px] font-semibold text-slate-600">
                                 HMP ({formatNumeroBR(agregados.splitHMPNum, 0)}% da cota)
                               </p>
-                              <div className="grid grid-cols-2 gap-2 text-[12px]">
+                              <div className="grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2">
                                 <div>
                                   <p className="text-slate-400">Exigido</p>
                                   <p className="font-semibold text-slate-800">
@@ -2783,7 +2806,7 @@ export default function EstudoViabilidadeApp() {
                               {ehAtico ? (
                               <>
                               {!lajeMinimizada && (
-                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 <Field
                                   label="Quantidade de pavimentos"
                                   placeholder="1"
@@ -2877,7 +2900,7 @@ export default function EstudoViabilidadeApp() {
                               <>
                               {!lajeMinimizada && (
                               <>
-                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 <Field
                                   label="Quantidade de pavimentos"
                                   placeholder="1"
@@ -2904,7 +2927,7 @@ export default function EstudoViabilidadeApp() {
                               <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
                                 Computáveis
                               </p>
-                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 <Field
                                   label="Circulação total"
                                   unit="m²"
@@ -2954,7 +2977,7 @@ export default function EstudoViabilidadeApp() {
                               <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
                                 Não Computáveis
                               </p>
-                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 <Field
                                   label="Circulação R não computável"
                                   unit="m²"
@@ -3692,7 +3715,7 @@ export default function EstudoViabilidadeApp() {
                     <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
                       Cota de garagem por estacionamento
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <p className="text-[11px] text-slate-400">Cota de garagem (m²/vaga)</p>
                         <p className="text-[16px] font-semibold text-slate-800">
@@ -3922,20 +3945,20 @@ export default function EstudoViabilidadeApp() {
             {/* ---------------- ABA: INDICADORES GERAIS ---------------- */}
             {activeTab === "indicadores" && (
               <>
-                <div className="no-print flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                <div className="no-print flex flex-col items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-[13px] text-slate-500">
                     Exporte esta página de indicadores para compartilhar ou arquivar o estudo.
                   </p>
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex w-full shrink-0 gap-2 sm:w-auto">
                     <button
                       onClick={exportarCSV}
-                      className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600"
+                      className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600 sm:flex-none"
                     >
                       Exportar CSV
                     </button>
                     <button
                       onClick={exportarPDF}
-                      className="rounded-md bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700"
+                      className="flex-1 rounded-md bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700 sm:flex-none"
                     >
                       Exportar PDF (A4)
                     </button>
