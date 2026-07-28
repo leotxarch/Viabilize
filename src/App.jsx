@@ -386,6 +386,7 @@ function TabelaUnidades({
   onRemove,
   onRenameCategoria,
   onRemoveCategoria,
+  onChangeTipo,
   onDragStartHandle,
   onDragOverCard,
   onDropCard,
@@ -398,7 +399,14 @@ function TabelaUnidades({
   const rotuloComputavel = "Computável (m²)";
   const subtitulo = categoria.naoComputavel
     ? "Tratada como incentivo não computável — conta apenas na privativa, não soma na área computável do projeto."
-    : "Área computável normal do empreendimento.";
+    : categoria.quinhao === "naoResidencial"
+    ? "Área computável do quinhão não residencial (NR) do empreendimento."
+    : "Área computável normal do empreendimento (quinhão residencial).";
+  const tipoAtual = categoria.naoComputavel
+    ? "naoComputavel"
+    : categoria.quinhao === "naoResidencial"
+    ? "naoResidencial"
+    : "residencial";
   const linhas = linhasGlobais.filter((u) => u.tabela === tabela);
   return (
     <div
@@ -442,6 +450,18 @@ function TabelaUnidades({
           )}
           <p className="truncate text-[12px] text-slate-400">{subtitulo}</p>
         </div>
+        {!categoria.padrao && onChangeTipo && (
+          <select
+            className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-[12px] text-slate-600 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            value={tipoAtual}
+            onChange={(e) => onChangeTipo(categoria.id, e.target.value)}
+            title="Define se esta categoria conta como área computável e a qual quinhão do terreno ela pertence"
+          >
+            <option value="naoComputavel">Não computável (incentivo)</option>
+            <option value="residencial">Computável — Residencial</option>
+            <option value="naoResidencial">Computável — Não Residencial</option>
+          </select>
+        )}
         <span className="shrink-0 text-[11px] text-slate-400">{linhas.length} un.</span>
         {onRemoveCategoria && (
           <button
@@ -655,18 +675,21 @@ function TabelaUnidades({
   );
 }
 
-const categoriaTabelaVazia = () => ({
+// quinhao: a qual base de terreno esta categoria pertence, para o cálculo de potencial
+// construtivo por uso (R2V/NR) — só é relevante para categorias computáveis.
+const categoriaTabelaVazia = (naoComputavel = true, quinhao = null) => ({
   id: "cat-" + Date.now() + Math.random(),
   nome: "Nova categoria",
   categoriaFixa: null,
-  naoComputavel: true,
+  naoComputavel,
+  quinhao,
 });
 
 const CATEGORIAS_TABELAS_PADRAO = [
-  { id: "incentivo", nome: "Incentivo", categoriaFixa: "Incentivo", naoComputavel: true },
-  { id: "hisHmp", nome: "HIS e HMP", categoriaFixa: null, naoComputavel: true, opcoesCategoria: ["HIS", "HMP"] },
-  { id: "fachadaAtiva", nome: "Fachada Ativa", categoriaFixa: "Fachada Ativa", naoComputavel: true },
-  { id: "residencial", nome: "Residencial", categoriaFixa: null, naoComputavel: false },
+  { id: "incentivo", nome: "Incentivo", categoriaFixa: "Incentivo", naoComputavel: true, quinhao: null, padrao: true },
+  { id: "hisHmp", nome: "HIS e HMP", categoriaFixa: null, naoComputavel: true, quinhao: null, padrao: true, opcoesCategoria: ["HIS", "HMP"] },
+  { id: "fachadaAtiva", nome: "Fachada Ativa", categoriaFixa: "Fachada Ativa", naoComputavel: true, quinhao: null, padrao: true },
+  { id: "residencial", nome: "Residencial", categoriaFixa: null, naoComputavel: false, quinhao: "residencial", padrao: true },
 ];
 
 const blocoVazio = () => ({
@@ -821,6 +844,7 @@ export default function EstudoViabilidadeApp() {
   const [areaTerreno, setAreaTerreno] = useState("");
   const [reservaCalcada, setReservaCalcada] = useState("");
   const [doacao, setDoacao] = useState("");
+  const [quinhaoNaoResidencial, setQuinhaoNaoResidencial] = useState("");
   const [subprefeitura, setSubprefeitura] = useState("");
   const [cotaSolidariedade, setCotaSolidariedade] = useState("");
   const [modalidadeCotaSolidariedade, setModalidadeCotaSolidariedade] = useState("");
@@ -842,6 +866,9 @@ export default function EstudoViabilidadeApp() {
   const [caMaximoZona, setCaMaximoZona] = useState("");
   const [majoracaoCA, setMajoracaoCA] = useState("");
   const [caMaximoComBeneficiosManual, setCaMaximoComBeneficiosManual] = useState("");
+  const [majoracaoNR, setMajoracaoNR] = useState("");
+  const [aplicarBonusHMP, setAplicarBonusHMP] = useState("");
+  const [aplicarBonusHIS, setAplicarBonusHIS] = useState("");
   const [tpNecessaria, setTpNecessaria] = useState("");
   const [tpProjeto, setTpProjeto] = useState("");
   const [cotaAmbiental, setCotaAmbiental] = useState("");
@@ -904,6 +931,19 @@ export default function EstudoViabilidadeApp() {
     setCategoriasTabelas((lista) => [...lista, categoriaTabelaVazia()]);
   const renameCategoriaTabela = (catId, nome) =>
     setCategoriasTabelas((lista) => lista.map((c) => (c.id === catId ? { ...c, nome } : c)));
+  // tipo: "naoComputavel" | "residencial" | "naoResidencial" — define se a categoria conta como
+  // área computável e, se contar, a qual quinhão do terreno ela pertence (usado no cálculo de
+  // potencial construtivo por uso).
+  const updateCategoriaTabelaTipo = (catId, tipo) =>
+    setCategoriasTabelas((lista) =>
+      lista.map((c) =>
+        c.id === catId
+          ? tipo === "naoComputavel"
+            ? { ...c, naoComputavel: true, quinhao: null }
+            : { ...c, naoComputavel: false, quinhao: tipo }
+          : c
+      )
+    );
   const removeCategoriaTabela = (catId) =>
     setCategoriasTabelas((lista) => lista.filter((c) => c.id !== catId));
   const moverCategoriaParaPosicao = (idOrigem, idDestino) =>
@@ -1586,12 +1626,82 @@ export default function EstudoViabilidadeApp() {
     const areaComputavelComBonusCotaSolidariedade =
       cotaSolidariedadeAtiva && terreno > 0 && caMaximoComBeneficios > 0 ? terreno * caMaximoComBeneficios : null;
 
-    // FALTA (ESTOURA): Área computável máxima permitida (CA máx c/ benefícios x Área do terreno) - Área computável total
-    // Objetivo é zerar esse valor. Negativo = estourou o CA; positivo = ainda há CA disponível.
-    const computavelMaximoPermitido =
-      terreno > 0 && caMaximoComBeneficios > 0 ? caMaximoComBeneficios * terreno : null;
-    const faltaEstoura =
-      computavelMaximoPermitido !== null ? computavelMaximoPermitido - areaComputavelTotal : null;
+    // --- Potencial construtivo por uso (R2V / NR / HMP / HIS) ---
+    // O potencial construtivo real de um projeto misto com Cota de Solidariedade não é um único
+    // CA aplicado sobre o terreno inteiro: R2V e NR usam seus próprios quinhões (o terreno é
+    // dividido entre eles) e HMP/HIS são bônus adicionais (25%/50% do CA básico da zona) aplicados
+    // sobre o terreno total, somados por fora — cada trilha tem sua própria máxima e atingida.
+    const quinhaoNaoResidencialNum = paraNumero(quinhaoNaoResidencial);
+    const quinhaoResidencial =
+      areaRemanescente !== null ? Math.max(areaRemanescente - quinhaoNaoResidencialNum, 0) : null;
+
+    const caR2V = caMaximoComBeneficios;
+    const majoracaoNRNum = paraNumero(majoracaoNR);
+    const caNR = caR2V !== null ? caR2V + majoracaoNRNum : null;
+
+    // HMP/HIS só recebem o bônus de +20% quando a Cota de Solidariedade é OBRIGATÓRIA (>=20.000m²
+    // de computável); quando é apenas opcional, o bônus de 20% já foi "gasto" no CA do R2V/NR.
+    const caHMP = caMaximoZonaNum > 0 ? caMaximoZonaNum * 0.25 * (cotaSolidariedadeObrigatoria ? 1.2 : 1) : null;
+    const caHIS = caMaximoZonaNum > 0 ? caMaximoZonaNum * 0.5 * (cotaSolidariedadeObrigatoria ? 1.2 : 1) : null;
+
+    const potencialR2VMaximo =
+      quinhaoResidencial !== null && caR2V > 0 ? quinhaoResidencial * caR2V : null;
+    const potencialNRMaximo =
+      caNR !== null && caNR > 0 ? quinhaoNaoResidencialNum * caNR : null;
+    const potencialHMPAtivo = aplicarBonusHMP === "Sim";
+    const potencialHISAtivo = aplicarBonusHIS === "Sim";
+    const potencialHMPMaximo = potencialHMPAtivo && terreno > 0 && caHMP !== null ? terreno * caHMP : null;
+    const potencialHISMaximo = potencialHISAtivo && terreno > 0 && caHIS !== null ? terreno * caHIS : null;
+
+    // Atingida por quinhão: soma a área computável já alocada nos pavimentos, separada pela
+    // categoria de uso (Residencial = quinhão residencial; categorias computáveis personalizadas
+    // marcadas como "Não Residencial" = quinhão NR).
+    const somarComputavelPorQuinhao = (quinhaoAlvo) =>
+      blocosComputados.reduce(
+        (acc, bloco) =>
+          acc +
+          bloco.lajesComputadas.reduce((accLaje, laje) => {
+            if (laje.tipo === "atico") return accLaje;
+            return (
+              accLaje +
+              (laje.itens || []).reduce((accItem, item) => {
+                const ref = unidadesPorDescricaoGlobal[item.descricao];
+                const cat = ref ? categoriaPorId[ref.tabela] : null;
+                if (!cat || cat.naoComputavel || cat.quinhao !== quinhaoAlvo) return accItem;
+                return accItem + item.computavelItem * laje.quantidadePavimentos * bloco.multiplicadorBlocos;
+              }, 0)
+            );
+          }, 0),
+        0
+      );
+    const potencialR2VAtingida = somarComputavelPorQuinhao("residencial");
+    const potencialNRAtingida = somarComputavelPorQuinhao("naoResidencial");
+    // HMP/HIS "atingida" usa a privativa das unidades HIS/HMP (mesma base de "contrapartidaAlocadaHIS/HMP"),
+    // já que essas unidades são incentivo não computável — a privativa é a medida real do que foi
+    // construído para consumir o bônus, não a computável (que fica zerada por design).
+    const potencialHMPAtingida = contrapartidaAlocadaHMP;
+    const potencialHISAtingida = contrapartidaAlocadaHIS;
+
+    const potencialR2VFalta = potencialR2VMaximo !== null ? potencialR2VMaximo - potencialR2VAtingida : null;
+    const potencialNRFalta = potencialNRMaximo !== null ? potencialNRMaximo - potencialNRAtingida : null;
+    const potencialHMPFalta = potencialHMPMaximo !== null ? potencialHMPMaximo - potencialHMPAtingida : null;
+    const potencialHISFalta = potencialHISMaximo !== null ? potencialHISMaximo - potencialHISAtingida : null;
+
+    const potencialPorUso = [
+      { uso: "R2V (Residencial)", ca: caR2V, base: "Quinhão residencial", maximo: potencialR2VMaximo, atingida: potencialR2VAtingida, falta: potencialR2VFalta },
+      { uso: "NR (Não Residencial)", ca: caNR, base: "Quinhão não residencial", maximo: potencialNRMaximo, atingida: potencialNRAtingida, falta: potencialNRFalta },
+      { uso: "HMP (bônus)", ca: potencialHMPAtivo ? caHMP : null, base: "Terreno total", maximo: potencialHMPMaximo, atingida: potencialHMPAtivo ? potencialHMPAtingida : null, falta: potencialHMPFalta },
+      { uso: "HIS (bônus)", ca: potencialHISAtivo ? caHIS : null, base: "Terreno total", maximo: potencialHISMaximo, atingida: potencialHISAtivo ? potencialHISAtingida : null, falta: potencialHISFalta },
+    ];
+
+    // FALTA (ESTOURA) total = soma das 4 trilhas (R2V + NR + HMP + HIS, cada uma com sua própria
+    // máxima e atingida). Objetivo é zerar; negativo = estourou o CA em alguma trilha.
+    const computavelMaximoPermitido = [potencialR2VMaximo, potencialNRMaximo, potencialHMPMaximo, potencialHISMaximo]
+      .filter((v) => v !== null)
+      .reduce((acc, v) => acc + v, 0);
+    const faltaEstoura = [potencialR2VFalta, potencialNRFalta, potencialHMPFalta, potencialHISFalta]
+      .filter((v) => v !== null)
+      .reduce((acc, v) => acc + v, 0);
 
     // TP (taxa de permeabilidade): redução TP = (TP projeto ÷ TP necessária) - 1
     const tpNecessariaNum = paraNumero(tpNecessaria);
@@ -1665,6 +1775,15 @@ export default function EstudoViabilidadeApp() {
       computavelMaximoPermitido,
       faltaEstoura,
       reducaoTP,
+      quinhaoResidencial,
+      quinhaoNaoResidencialNum,
+      caR2V,
+      caNR,
+      caHMP,
+      caHIS,
+      potencialHMPAtivo,
+      potencialHISAtivo,
+      potencialPorUso,
     };
   }, [
     blocos,
@@ -1698,6 +1817,10 @@ export default function EstudoViabilidadeApp() {
     cotaParteMinima,
     tpNecessaria,
     tpProjeto,
+    quinhaoNaoResidencial,
+    majoracaoNR,
+    aplicarBonusHMP,
+    aplicarBonusHIS,
   ]);
 
   // --- Exportar Indicadores Gerais ---
@@ -1975,7 +2098,25 @@ export default function EstudoViabilidadeApp() {
                       value={formatNumeroBR(agregados.areaRemanescente)}
                       disabled
                     />
+                    <Field
+                      label="Quinhão não residencial (NR)"
+                      unit="m²"
+                      placeholder="0,00"
+                      value={quinhaoNaoResidencial}
+                      onChange={(e) => setQuinhaoNaoResidencial(e.target.value)}
+                    />
+                    <Field
+                      label="Quinhão residencial"
+                      unit="m²"
+                      value={agregados.quinhaoResidencial !== null ? formatNumeroBR(agregados.quinhaoResidencial) : "—"}
+                      disabled
+                    />
                   </div>
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Quinhão residencial = Área remanescente − Quinhão não residencial. Usados no cálculo de
+                    potencial construtivo por uso (seção "Potencial Construtivo por Uso", abaixo), já que
+                    R2V e NR aplicam o CA sobre bases de área diferentes.
+                  </p>
                 </SectionCard>
 
                 <SectionCard
@@ -2056,6 +2197,19 @@ export default function EstudoViabilidadeApp() {
                       value={caMaximoComBeneficiosManual}
                       onChange={(e) => setCaMaximoComBeneficiosManual(e.target.value)}
                     />
+                    <div>
+                      <Field
+                        label="Majoração CA (NR)"
+                        placeholder="0,00"
+                        value={majoracaoNR}
+                        onChange={(e) => setMajoracaoNR(e.target.value)}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Pontos de CA adicionados apenas ao uso Não Residencial (ex: incentivo específico
+                        para NR), somados ao CA do R2V com benefícios. Ver "Potencial Construtivo por Uso",
+                        abaixo.
+                      </p>
+                    </div>
                     <div>
                       <Field
                         label="TO máxima"
@@ -2553,6 +2707,113 @@ export default function EstudoViabilidadeApp() {
                       )}
                     </div>
                   )}
+                </SectionCard>
+
+                <SectionCard
+                  title="Potencial Construtivo por Uso"
+                  subtitle="R2V e NR usam seus próprios quinhões de terreno; HMP e HIS são bônus adicionais aplicados sobre o terreno total"
+                >
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[13px] font-medium text-slate-500">Aplicar bônus HMP?</span>
+                      <select
+                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                        value={aplicarBonusHMP}
+                        onChange={(e) => setAplicarBonusHMP(e.target.value)}
+                      >
+                        <option value="">Selecione...</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[13px] font-medium text-slate-500">Aplicar bônus HIS?</span>
+                      <select
+                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                        value={aplicarBonusHIS}
+                        onChange={(e) => setAplicarBonusHIS(e.target.value)}
+                      >
+                        <option value="">Selecione...</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p className="mt-2 text-[12px] text-slate-400">
+                    HMP = 25% do CA básico da zona · HIS = 50% do CA básico da zona — ambos aplicados sobre o
+                    terreno total, com +20% adicional quando a Cota de Solidariedade é obrigatória
+                    (≥ 20.000 m² de computável).
+                  </p>
+
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full min-w-[700px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-left text-[12px] text-slate-400">
+                          <th className="py-2 pr-3 font-medium">Uso</th>
+                          <th className="py-2 pr-3 font-medium">CA aplicado</th>
+                          <th className="py-2 pr-3 font-medium">Base de área</th>
+                          <th className="py-2 pr-3 font-medium">Computável máxima</th>
+                          <th className="py-2 pr-3 font-medium">Computável atingida</th>
+                          <th className="py-2 font-medium">Falta (Estoura)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {agregados.potencialPorUso.map((linha) => (
+                          <tr key={linha.uso} className="border-b border-slate-100">
+                            <td className="py-2 pr-3 font-medium text-slate-700">{linha.uso}</td>
+                            <td className="py-2 pr-3">{linha.ca !== null ? formatNumeroBR(linha.ca) : "—"}</td>
+                            <td className="py-2 pr-3 text-slate-500">{linha.base}</td>
+                            <td className="py-2 pr-3">
+                              {linha.maximo !== null ? `${formatNumeroBR(linha.maximo)} m²` : "—"}
+                            </td>
+                            <td className="py-2 pr-3">
+                              {linha.atingida !== null ? `${formatNumeroBR(linha.atingida)} m²` : "—"}
+                            </td>
+                            <td
+                              className={`py-2 font-semibold ${
+                                linha.falta === null
+                                  ? "text-slate-400"
+                                  : linha.falta < 0
+                                  ? "text-red-600"
+                                  : "text-emerald-600"
+                              }`}
+                            >
+                              {linha.falta !== null ? `${formatNumeroBR(linha.falta)} m²` : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="font-semibold text-slate-800">
+                          <td className="py-2 pr-3" colSpan={3}>
+                            Total
+                          </td>
+                          <td className="py-2 pr-3">{formatNumeroBR(agregados.computavelMaximoPermitido)} m²</td>
+                          <td className="py-2 pr-3">
+                            {formatNumeroBR(
+                              agregados.potencialPorUso
+                                .filter((l) => l.atingida !== null)
+                                .reduce((acc, l) => acc + l.atingida, 0)
+                            )}{" "}
+                            m²
+                          </td>
+                          <td
+                            className={
+                              agregados.faltaEstoura < 0 ? "py-2 text-red-600" : "py-2 text-emerald-600"
+                            }
+                          >
+                            {formatNumeroBR(agregados.faltaEstoura)} m²
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    "Falta (Estoura)" no topo da página é a soma das 4 trilhas desta tabela — não mais um
+                    único CA aplicado sobre o terreno inteiro. R2V e NR não podem faltar/estourar juntos:
+                    cada um tem seu próprio quinhão e seu próprio limite. A "Computável atingida" de HMP/HIS
+                    usa a privativa das unidades HIS/HMP (são incentivo não computável por definição — não
+                    entram na "Área computável total" do projeto), por isso a soma da coluna Atingida não é
+                    igual à área computável total do empreendimento.
+                  </p>
                 </SectionCard>
 
                 <SectionCard
@@ -3881,6 +4142,7 @@ export default function EstudoViabilidadeApp() {
                         onRemove={removeUnidade}
                         onRenameCategoria={renameCategoriaTabela}
                         onRemoveCategoria={removeCategoriaTabela}
+                        onChangeTipo={updateCategoriaTabelaTipo}
                         onDragStartHandle={() => iniciarArrasto("categoria", categoria.id)}
                         onDropCard={() => soltarArrasto("categoria", categoria.id)}
                         arrastando={itemArrastado?.tipo === "categoria" && itemArrastado.id === categoria.id}
