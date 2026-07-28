@@ -2576,9 +2576,9 @@ export default function EstudoViabilidadeApp() {
                           onChange={(e) => setModalidadeCotaSolidariedade(e.target.value)}
                         >
                           <option value="">Selecione...</option>
-                          <option value="Construção de HIS">Construção física de HIS no terreno</option>
+                          <option value="Construção de HIS">Incorporar HIS/HMP</option>
                           <option value="Pagamento em Recursos Financeiros (FUNDURB)">
-                            Pagamento em Recursos Financeiros (FUNDURB / Compensação)
+                            FUNDURB/COMPENSAÇÃO
                           </option>
                         </select>
                       </label>
