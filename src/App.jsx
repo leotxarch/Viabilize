@@ -1458,8 +1458,13 @@ export default function EstudoViabilidadeApp() {
       return false;
     };
 
-    // Soma a área (privativa) das unidades marcadas como HIS/HMP já alocadas nos pavimentos,
-    // opcionalmente filtrando por uma categoria específica ("HIS" ou "HMP").
+    // Soma a área privativa (construída) das unidades marcadas como HIS/HMP já alocadas nos
+    // pavimentos, opcionalmente filtrando por uma categoria específica ("HIS" ou "HMP"). Usa a
+    // privativa (não a computável) de propósito: unidades de HIS/HMP cadastradas na categoria
+    // "HIS e HMP" são tratadas como incentivo não computável (não somam na área computável do
+    // próprio empreendimento — esse é o benefício da Cota de Solidariedade), então sua
+    // "computavelUnidade" fica zerada. A privativa é a única medida que reflete a área física
+    // realmente construída para cumprir a cota.
     const somarAlocadoHisHmp = (categoriaAlvo) =>
       blocosComputados.reduce(
         (acc, bloco) =>
@@ -1561,10 +1566,18 @@ export default function EstudoViabilidadeApp() {
         : null;
 
     // CA máximo com benefícios = CA máximo da zona x (1 + Majoração/100) — sugestão automática,
-    // mas o campo é editável e o valor digitado manualmente tem prioridade. Quando a Majoração
-    // não foi digitada, a sugestão é sempre o bônus fixo de 20% acima do CA máximo da zona.
+    // mas o campo é editável e o valor digitado manualmente tem prioridade. O bônus fixo de +20%
+    // é o benefício concedido especificamente pela Cota de Solidariedade (art. 112, Lei 16.050/2014
+    // - PDE) — por isso só é sugerido automaticamente quando ela está ativa. Fora desse caso, o
+    // campo fica em 0% por padrão: outros incentivos (fruição pública, térreo ativo, outorga
+    // onerosa específica etc.) não são calculados automaticamente e devem ser digitados aqui pelo
+    // usuário, sem herdar o bônus da Cota de Solidariedade indevidamente.
     const majoracaoDigitada = majoracaoCA.trim() !== "";
-    const majoracaoNum = majoracaoDigitada ? paraNumero(majoracaoCA) : 20;
+    const majoracaoNum = majoracaoDigitada
+      ? paraNumero(majoracaoCA)
+      : cotaSolidariedadeAtiva
+      ? 20
+      : 0;
     const caMaximoComBeneficiosCalculado = caMaximoZonaNum > 0 ? caMaximoZonaNum * (1 + majoracaoNum / 100) : null;
     const caMaximoComBeneficiosManualNum = paraNumero(caMaximoComBeneficiosManual);
     const caMaximoComBeneficios =
@@ -2473,15 +2486,16 @@ export default function EstudoViabilidadeApp() {
                     />
                     <div>
                       <Field
-                        label="Majoração CA (não residencial)"
+                        label="Majoração CA (bônus urbanístico)"
                         unit="%"
-                        placeholder="20,00 (automático)"
+                        placeholder={agregados.cotaSolidariedadeAtiva ? "20,00 (automático)" : "0,00"}
                         value={majoracaoCA}
                         onChange={(e) => setMajoracaoCA(e.target.value)}
                       />
                       <p className="mt-1 text-[11px] text-slate-400">
-                        Preenchido automaticamente com 20% acima do CA máximo da zona. Digite outro
-                        valor aqui para sobrescrever.
+                        {agregados.cotaSolidariedadeAtiva
+                          ? "Preenchido automaticamente com 20% (bônus da Cota de Solidariedade, aba Dados do Terreno). Digite outro valor aqui para sobrescrever."
+                          : "Sem Cota de Solidariedade ativa, não há bônus automático. Use este campo apenas para simular outros incentivos específicos (fruição pública, térreo ativo, outorga onerosa) — ele não deve herdar o bônus residencial da Cota de Solidariedade."}
                       </p>
                     </div>
                     <Field
