@@ -1368,9 +1368,12 @@ export default function EstudoViabilidadeApp() {
         totalOrnamentoBloco;
       // "Não computável" no mesmo padrão da tabela do Pavimento: áreas comuns não computáveis do
       // pavimento + Hall Privativo/Terraço/Floreira/Área técnica vindos das unidades alocadas.
-      // O Ático inteiro (Total dos pavimentos do Ático) entra aqui como área não computável.
+      // O Ático NÃO entra aqui: barrilete/casa de máquinas/reservatório/área técnica de cobertura são
+      // isentos tanto da computável quanto da área total de prefeitura (confirmado batendo a planilha
+      // real: a "NÃO COMPUTÁVEL TOTAL" oficial do bloco não soma o Ático, que só aparece como
+      // referência informativa no Quadro de Áreas de Prefeitura).
       const totalNaoComputavelTabelaBloco = lajesComputadas.reduce(
-        (acc, l) => acc + (l.tipo === "atico" ? l.totalPavimentosAtico : l.naoComputavelTabelaPavimentos),
+        (acc, l) => acc + (l.tipo === "atico" ? 0 : l.naoComputavelTabelaPavimentos),
         0
       );
 
@@ -1459,10 +1462,13 @@ export default function EstudoViabilidadeApp() {
     const areaTotalPrefeituraAntiga =
       sobresolosPrefeitura + subsolosPrefeitura + terreoObrasPrefeitura + pavimentosPrefeitura + aticoPrefeitura;
 
-    // Área não computável total do projeto = Não computável de todos os blocos (já incluindo o Ático
-    // inteiro) + o total geral do Quadro de Estacionamento (Garagem + Outros dos níveis).
+    // Área não computável total do projeto = Não computável de todos os blocos (sem o Ático, que é
+    // isento) + Obras complementares + o total geral do Quadro de Estacionamento (Garagem + Outros
+    // dos níveis).
     const areaNaoComputavelTotalProjeto =
-      blocosComputados.reduce((acc, b) => acc + b.totalNaoComputavelTabelaBloco, 0) + totalGeralEstacionamento;
+      blocosComputados.reduce((acc, b) => acc + b.totalNaoComputavelTabelaBloco, 0) +
+      obrasComplementaresNum +
+      totalGeralEstacionamento;
 
     // Área total de prefeitura = Área computável total + Área não computável total do projeto.
     const areaTotalPrefeitura = areaComputavelTotal + areaNaoComputavelTotalProjeto;
@@ -1721,14 +1727,23 @@ export default function EstudoViabilidadeApp() {
       { uso: "HIS (bônus)", ca: potencialHISAtivo ? caHIS : null, base: "Terreno total", maximo: potencialHISMaximo, atingida: potencialHISAtivo ? potencialHISAtingida : null, falta: potencialHISFalta },
     ];
 
-    // FALTA (ESTOURA) total = soma das 4 trilhas (R2V + NR + HMP + HIS, cada uma com sua própria
-    // máxima e atingida). Objetivo é zerar; negativo = estourou o CA em alguma trilha.
+    // Computável máximo permitido = soma das máximas das 4 trilhas (R2V + NR + HMP + HIS), cada uma
+    // com sua própria base de área (quinhão ou terreno total).
     const computavelMaximoPermitido = [potencialR2VMaximo, potencialNRMaximo, potencialHMPMaximo, potencialHISMaximo]
       .filter((v) => v !== null)
       .reduce((acc, v) => acc + v, 0);
-    const faltaEstoura = [potencialR2VFalta, potencialNRFalta, potencialHMPFalta, potencialHISFalta]
-      .filter((v) => v !== null)
-      .reduce((acc, v) => acc + v, 0);
+    // FALTA (ESTOURA) headline = Computável máximo permitido − Área computável total do projeto (a
+    // mesma comparação global que a planilha real faz). Não é a soma das 4 "faltas" por trilha: a soma
+    // por trilha pode divergir da área computável total real por dois motivos — áreas comuns
+    // computáveis do pavimento (ex: circulação) não são atribuídas a nenhuma trilha específica, e
+    // unidades de incentivo não computável (cota HIS/HMP) contam na trilha de bônus pela privativa,
+    // mas não entram na área computável total do projeto. Ver "totalFaltaPotencialPorUso" para o
+    // detalhamento por trilha (tabela "Potencial Construtivo por Uso").
+    const faltaEstoura = computavelMaximoPermitido - areaComputavelTotal;
+    const totalAtingidaPotencialPorUso = potencialPorUso
+      .filter((l) => l.atingida !== null)
+      .reduce((acc, l) => acc + l.atingida, 0);
+    const totalFaltaPotencialPorUso = computavelMaximoPermitido - totalAtingidaPotencialPorUso;
 
     // TP (taxa de permeabilidade): redução TP = (TP projeto ÷ TP necessária) - 1
     const tpNecessariaNum = paraNumero(tpNecessaria);
@@ -1801,6 +1816,8 @@ export default function EstudoViabilidadeApp() {
       valorTotalFundurb,
       computavelMaximoPermitido,
       faltaEstoura,
+      totalAtingidaPotencialPorUso,
+      totalFaltaPotencialPorUso,
       reducaoTP,
       quinhaoResidencial,
       quinhaoNaoResidencialNum,
@@ -2815,31 +2832,28 @@ export default function EstudoViabilidadeApp() {
                           </td>
                           <td className="py-2 pr-3">{formatNumeroBR(agregados.computavelMaximoPermitido)} m²</td>
                           <td className="py-2 pr-3">
-                            {formatNumeroBR(
-                              agregados.potencialPorUso
-                                .filter((l) => l.atingida !== null)
-                                .reduce((acc, l) => acc + l.atingida, 0)
-                            )}{" "}
-                            m²
+                            {formatNumeroBR(agregados.totalAtingidaPotencialPorUso)} m²
                           </td>
                           <td
                             className={
-                              agregados.faltaEstoura < 0 ? "py-2 text-red-600" : "py-2 text-emerald-600"
+                              agregados.totalFaltaPotencialPorUso < 0 ? "py-2 text-red-600" : "py-2 text-emerald-600"
                             }
                           >
-                            {formatNumeroBR(agregados.faltaEstoura)} m²
+                            {formatNumeroBR(agregados.totalFaltaPotencialPorUso)} m²
                           </td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                   <p className="mt-3 text-[12px] text-slate-400">
-                    "Falta (Estoura)" no topo da página é a soma das 4 trilhas desta tabela — não mais um
-                    único CA aplicado sobre o terreno inteiro. R2V e NR não podem faltar/estourar juntos:
-                    cada um tem seu próprio quinhão e seu próprio limite. A "Computável atingida" de HMP/HIS
-                    usa a privativa das unidades HIS/HMP (são incentivo não computável por definição — não
-                    entram na "Área computável total" do projeto), por isso a soma da coluna Atingida não é
-                    igual à área computável total do empreendimento.
+                    O "Falta (Estoura)" no topo da página compara diretamente Computável máximo permitido
+                    × Área computável total do projeto (mesma conferência da planilha oficial) — por isso
+                    pode não bater com o "Total" desta tabela, que é a soma das 4 trilhas individuais.
+                    R2V e NR não podem faltar/estourar juntos: cada um tem seu próprio quinhão e seu
+                    próprio limite. A "Computável atingida" de HMP/HIS usa a privativa das unidades
+                    HIS/HMP quando a categoria é incentivo não computável (não entram na "Área computável
+                    total" do projeto, mas consomem a trilha de bônus), por isso a soma da coluna Atingida
+                    não é igual à área computável total do empreendimento.
                   </p>
                 </SectionCard>
 
@@ -2897,8 +2911,8 @@ export default function EstudoViabilidadeApp() {
                   </div>
                   <p className="mt-3 text-[12px] text-slate-400">
                     Área não computável total = Não computável de todos os blocos (Circulação, Hall, Lazer,
-                    Terraço, Escada NR, Área técnica, Outros e o Ático inteiro) + Total geral do Quadro de
-                    Estacionamento (Garagem + Outros dos níveis).
+                    Terraço, Escada NR, Área técnica, Outros — sem o Ático, que é isento) + Obras
+                    complementares + Total geral do Quadro de Estacionamento (Garagem + Outros dos níveis).
                   </p>
                 </SectionCard>
 
