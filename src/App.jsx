@@ -96,6 +96,12 @@ const TABS = [
 ];
 
 const ZONAS_SP = [
+  "ZEU",
+  "ZEUa",
+  "ZEUP",
+  "ZEUPa",
+  "ZEM",
+  "ZEMP",
   "ZC",
   "ZCa",
   "ZC-ZEIS",
@@ -103,35 +109,35 @@ const ZONAS_SP = [
   "ZCOR-2",
   "ZCOR-3",
   "ZCORa",
-  "ZDE-1",
-  "ZDE-2",
+  "ZM",
+  "ZMa",
+  "ZMIS",
+  "ZMISa",
   "ZEIS-1",
   "ZEIS-2",
   "ZEIS-3",
   "ZEIS-4",
   "ZEIS-5",
-  "ZEM",
-  "ZEMP",
-  "ZEP",
-  "ZEPAM",
-  "ZEPEC",
-  "ZER-1",
-  "ZER-2",
-  "ZERa",
-  "ZM",
-  "ZMa",
-  "ZMIS",
-  "ZMISa",
-  "ZOE",
-  "ZPDS",
-  "ZPDSr",
+  "ZDE-1",
+  "ZDE-2",
   "ZPI-1",
   "ZPI-2",
   "ZPR",
-  "ZEU",
-  "ZEUa",
-  "ZEUP",
-  "ZEUPa",
+  "ZER-1",
+  "ZER-2",
+  "ZERa",
+  "ZPDS",
+  "ZPDSr",
+  "ZEPAM",
+  "AVP-1",
+  "AVP-2",
+  "AI",
+  "AIa",
+  "AC-1",
+  "AC-2",
+  "ZEP",
+  "ZEPEC",
+  "ZOE",
 ];
 
 // Notas do Quadro 3 (Anexo integrante da Lei nº 16.402, de 22 de março de 2016)
@@ -151,38 +157,49 @@ const NOTAS_QUADRO_3 = {
 // TO: to500 = lotes até 500 m² · toMais500 = lotes iguais ou superiores a 500 m²
 // recuoLatFundoAte10 / recuoLatFundoAcima10: recuos de fundos e laterais conforme altura da edificação
 const QUADRO_3 = {
-  ZEU: { caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: null, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: 20, notas: ["j"] },
-  ZEUa: { caMinimo: null, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: null, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: 40, notas: ["j"] },
-  ZEUP: { caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["b", "j"] },
-  ZEUPa: { caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.5, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["c", "j"] },
-  ZEM: { caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: null, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: 20, notas: ["d", "j"] },
-  ZEMP: { caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: 40, notas: ["e", "j"] },
-  ZC: { caMinimo: 0.3, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 48, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  ZCa: { caMinimo: null, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 20, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  "ZC-ZEIS": { caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  "ZCOR-1": { caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  "ZCOR-2": { caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  "ZCOR-3": { caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 15, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  ZCORa: { caMinimo: 0.5, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: null, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  ZM: { caMinimo: 0.3, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  ZMa: { caMinimo: null, caBasico: 1, caMaximo: 2, to500: 0.7, toMais500: 0.5, gabarito: 15, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  ZMIS: { caMinimo: 0.3, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 15, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
-  ZMISa: { caMinimo: 0.5, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: null, gabarito: null, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  "ZEIS-1": { caMinimo: 0.5, caBasico: 1, caMaximo: 2.5, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["f", "j"] },
-  "ZEIS-2": { caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: null, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["f", "j"] },
-  "ZEIS-3": { caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["g", "j"] },
-  "ZEIS-4": { caMinimo: null, caBasico: 1, caMaximo: 4, to500: 0.7, toMais500: 0.5, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["h", "j"] },
-  "ZEIS-5": { caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["f", "j"] },
-  "ZDE-1": { caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  "ZDE-2": { caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
-  "ZPI-1": { caMinimo: 0.5, caBasico: 1, caMaximo: 1.5, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
-  "ZPI-2": { caMinimo: 0.05, caBasico: 1, caMaximo: 1.5, to500: null, toMais500: 0.3, gabarito: 20, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
-  ZPR: { caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  "ZER-1": { caMinimo: 0.5, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  ZERa: { caMinimo: 0.5, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: null, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
-  ZPDS: { caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.35, toMais500: 0.2, gabarito: 15, recuoFrente: 20, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
-  ZPDSr: { caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.15, toMais500: null, gabarito: 10, recuoFrente: 10, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
-  ZEPAM: { caMinimo: 0.1, caBasico: 1, caMaximo: 1, to500: 0.1, toMais500: 0.1, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  // TRANSFORMAÇÃO
+  ZEU: { tipo: "Transformação", caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: 20, notas: ["j"] },
+  ZEUa: { tipo: "Transformação", caMinimo: null, caBasico: 1, caMaximo: 2, to500: 0.7, toMais500: 0.5, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: 40, notas: ["j"] },
+  ZEUP: { tipo: "Transformação", caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["b", "j"] },
+  ZEUPa: { tipo: "Transformação", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.7, toMais500: 0.5, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["c", "j"] },
+  ZEM: { tipo: "Transformação", caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: 20, notas: ["d", "j"] },
+  ZEMP: { tipo: "Transformação", caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: 40, notas: ["e", "j"] },
+  // QUALIFICAÇÃO
+  ZC: { tipo: "Qualificação", caMinimo: 0.3, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 48, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  ZCa: { tipo: "Qualificação", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.7, toMais500: 0.7, gabarito: 20, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  "ZC-ZEIS": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  "ZCOR-1": { tipo: "Qualificação", caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  "ZCOR-2": { tipo: "Qualificação", caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  "ZCOR-3": { tipo: "Qualificação", caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  ZCORa: { tipo: "Qualificação", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  ZM: { tipo: "Qualificação", caMinimo: 0.3, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  ZMa: { tipo: "Qualificação", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.7, toMais500: 0.5, gabarito: 15, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  ZMIS: { tipo: "Qualificação", caMinimo: 0.3, caBasico: 1, caMaximo: 2, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  ZMISa: { tipo: "Qualificação", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.7, toMais500: 0.5, gabarito: 15, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  "ZEIS-1": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 2.5, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["f", "j"] },
+  "ZEIS-2": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["f", "j"] },
+  "ZEIS-3": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["g", "j"] },
+  "ZEIS-4": { tipo: "Qualificação", caMinimo: null, caBasico: 1, caMaximo: 2, to500: 0.7, toMais500: 0.5, gabarito: null, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["h", "j"] },
+  "ZEIS-5": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: null, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["f", "j"] },
+  "ZDE-1": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.7, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  "ZDE-2": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 2, to500: 0.7, toMais500: 0.5, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  "ZPI-1": { tipo: "Qualificação", caMinimo: 0.5, caBasico: 1, caMaximo: 1.5, to500: 0.7, toMais500: 0.7, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  "ZPI-2": { tipo: "Qualificação", caMinimo: null, caBasico: 1, caMaximo: 1.5, to500: 0.5, toMais500: 0.3, gabarito: 28, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  // PRESERVAÇÃO
+  ZPR: { tipo: "Preservação", caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  "ZER-1": { tipo: "Preservação", caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  "ZER-2": { tipo: "Preservação", caMinimo: 0.05, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  ZERa: { tipo: "Preservação", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.5, toMais500: 0.5, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  ZPDS: { tipo: "Preservação", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.35, toMais500: 0.25, gabarito: 20, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  ZPDSr: { tipo: "Preservação", caMinimo: null, caBasico: 0.2, caMaximo: 0.2, to500: 0.2, toMais500: 0.15, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  ZEPAM: { tipo: "Preservação", caMinimo: null, caBasico: 0.1, caMaximo: 0.1, to500: 0.1, toMais500: 0.1, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  // ÁREAS PÚBLICAS E SAPAVEL
+  "AVP-1": { tipo: "Áreas Públicas e Sapaval", caMinimo: null, caBasico: null, caMaximo: null, to500: null, toMais500: null, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["k", "j"] },
+  "AVP-2": { tipo: "Áreas Públicas e Sapaval", caMinimo: null, caBasico: 1, caMaximo: 1, to500: 0.3, toMais500: 0.3, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  AI: { tipo: "Áreas Públicas e Sapaval", caMinimo: null, caBasico: 1, caMaximo: 4, to500: 0.85, toMais500: 0.7, gabarito: 28, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  AIa: { tipo: "Áreas Públicas e Sapaval", caMinimo: null, caBasico: 1, caMaximo: 2, to500: 0.5, toMais500: 0.5, gabarito: 15, recuoFrente: null, recuoLatFundoAte10: null, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: ["j"] },
+  "AC-1": { tipo: "Áreas Públicas e Sapaval", caMinimo: null, caBasico: 0.6, caMaximo: 0.6, to500: 0.6, toMais500: 0.6, gabarito: 20, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
+  "AC-2": { tipo: "Áreas Públicas e Sapaval", caMinimo: null, caBasico: 0.4, caMaximo: 0.4, to500: 0.4, toMais500: 0.4, gabarito: 10, recuoFrente: 5, recuoLatFundoAte10: 3, recuoLatFundoAcima10: 3, cotaParteMaxima: null, notas: [] },
 };
 
 // Subprefeituras e respectivos subdistritos do Município de São Paulo
@@ -822,6 +839,7 @@ export default function EstudoViabilidadeApp() {
 
   // --- Zoneamento (usados como referência nos indicadores) ---
   const [zona, setZona] = useState("");
+  const [caMinimoZona, setCaMinimoZona] = useState("");
   const [caBasicoZona, setCaBasicoZona] = useState("");
   const [caMaximoZona, setCaMaximoZona] = useState("");
   const [majoracaoCA, setMajoracaoCA] = useState("");
@@ -845,13 +863,14 @@ export default function EstudoViabilidadeApp() {
     const terrenoNum = paraNumero(terrenoAtual);
     const toEscolhido =
       terrenoNum > 0 && terrenoNum < 500 ? dados.to500 : dados.toMais500 ?? dados.to500;
-    if (dados.caBasico !== null) setCaBasicoZona(formatNumeroBR(dados.caBasico));
-    if (dados.caMaximo !== null) setCaMaximoZona(formatNumeroBR(dados.caMaximo));
-    if (toEscolhido !== null && toEscolhido !== undefined) {
-      setToMaximaZona(formatNumeroBR(toEscolhido * 100));
-    }
-    if (dados.gabarito !== null) setGabaritoMaximoZona(formatNumeroBR(dados.gabarito));
-    if (dados.cotaParteMaxima !== null) setCotaParteMaxima(formatNumeroBR(dados.cotaParteMaxima));
+    setCaMinimoZona(dados.caMinimo !== null ? formatNumeroBR(dados.caMinimo) : "");
+    setCaBasicoZona(dados.caBasico !== null ? formatNumeroBR(dados.caBasico) : "");
+    setCaMaximoZona(dados.caMaximo !== null ? formatNumeroBR(dados.caMaximo) : "");
+    setToMaximaZona(
+      toEscolhido !== null && toEscolhido !== undefined ? formatNumeroBR(toEscolhido * 100) : ""
+    );
+    setGabaritoMaximoZona(dados.gabarito !== null ? formatNumeroBR(dados.gabarito) : "");
+    setCotaParteMaxima(dados.cotaParteMaxima !== null ? formatNumeroBR(dados.cotaParteMaxima) : "");
   };
 
   const handleZonaChange = (novaZona) => {
@@ -1542,14 +1561,10 @@ export default function EstudoViabilidadeApp() {
         : null;
 
     // CA máximo com benefícios = CA máximo da zona x (1 + Majoração/100) — sugestão automática,
-    // mas o campo é editável e o valor digitado manualmente tem prioridade. Quando a Cota de
-    // Solidariedade está ativa e a Majoração não foi digitada, aplica o bônus fixo de 20%.
+    // mas o campo é editável e o valor digitado manualmente tem prioridade. Quando a Majoração
+    // não foi digitada, a sugestão é sempre o bônus fixo de 20% acima do CA máximo da zona.
     const majoracaoDigitada = majoracaoCA.trim() !== "";
-    const majoracaoNum = majoracaoDigitada
-      ? paraNumero(majoracaoCA)
-      : cotaSolidariedadeAtiva
-      ? 20
-      : 0;
+    const majoracaoNum = majoracaoDigitada ? paraNumero(majoracaoCA) : 20;
     const caMaximoComBeneficiosCalculado = caMaximoZonaNum > 0 ? caMaximoZonaNum * (1 + majoracaoNum / 100) : null;
     const caMaximoComBeneficiosManualNum = paraNumero(caMaximoComBeneficiosManual);
     const caMaximoComBeneficios =
@@ -2428,6 +2443,17 @@ export default function EstudoViabilidadeApp() {
                       options={ZONAS_SP}
                     />
                     <Field
+                      label="Tipo de zona"
+                      value={QUADRO_3[zona]?.tipo || "—"}
+                      disabled
+                    />
+                    <Field
+                      label="CA mínimo da zona"
+                      placeholder="0,00"
+                      value={caMinimoZona}
+                      onChange={(e) => setCaMinimoZona(e.target.value)}
+                    />
+                    <Field
                       label="CA básico da zona"
                       placeholder="0,00"
                       value={caBasicoZona}
@@ -2443,14 +2469,13 @@ export default function EstudoViabilidadeApp() {
                       <Field
                         label="Majoração CA (não residencial)"
                         unit="%"
-                        placeholder={agregados.cotaSolidariedadeAtiva ? "20,00 (automático)" : "0,00"}
+                        placeholder="20,00 (automático)"
                         value={majoracaoCA}
                         onChange={(e) => setMajoracaoCA(e.target.value)}
                       />
                       <p className="mt-1 text-[11px] text-slate-400">
-                        {agregados.cotaSolidariedadeAtiva
-                          ? "Preenchido automaticamente com 20% (bônus da Cota de Solidariedade, aba Dados do Terreno). Digite outro valor aqui para sobrescrever."
-                          : "Aplicável quando há benefício ou outorga onerosa."}
+                        Preenchido automaticamente com 20% acima do CA máximo da zona. Digite outro
+                        valor aqui para sobrescrever.
                       </p>
                     </div>
                     <Field
