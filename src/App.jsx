@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import {
-  MapPin,
   LandPlot,
   Building2,
   Rows3,
@@ -83,12 +82,11 @@ function navegarComSetas(e) {
 
 // ------------------------------------------------------------------
 // Estrutura do formulário + agregados automáticos
-// Abas: Terreno | Zoneamento | Empreendimento | Resumo das Unidades | Indicadores
+// Abas: Terreno e Zoneamento | Empreendimento | Resumo das Unidades | Indicadores
 // ------------------------------------------------------------------
 
 const TABS = [
-  { id: "terreno", label: "Dados do Terreno", icon: LandPlot },
-  { id: "zoneamento", label: "Zoneamento", icon: MapPin },
+  { id: "terreno", label: "Terreno e Zoneamento", icon: LandPlot },
   { id: "areas", label: "Resumo das Unidades", icon: Rows3 },
   { id: "empreendimento", label: "Dados do Empreendimento", icon: Building2 },
   { id: "custos", label: "Custos / Taxas / Outorgas", icon: Wallet },
@@ -1900,7 +1898,7 @@ export default function EstudoViabilidadeApp() {
               )}
             </div>
 
-            {/* ---------------- ABA: DADOS DO TERRENO ---------------- */}
+            {/* ---------------- ABA: TERRENO E ZONEAMENTO ---------------- */}
             {activeTab === "terreno" && (
               <>
                 <SectionCard
@@ -1981,6 +1979,255 @@ export default function EstudoViabilidadeApp() {
                 </SectionCard>
 
                 <SectionCard
+                  title="Parâmetros da zona"
+                  subtitle="Índices urbanísticos aplicáveis conforme a legislação de zoneamento — Quadro 3, Lei nº 16.402/2016"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
+                    <p className="text-[12px] text-blue-700">
+                      {QUADRO_3[zona]
+                        ? "Valores preenchidos automaticamente a partir do Quadro 3 da Lei nº 16.402/2016. Você pode ajustar manualmente se necessário."
+                        : "Selecione uma zona para preencher automaticamente, ou digite os valores manualmente (algumas zonas especiais, como ZEP/ZEPEC/ZOE, seguem legislação específica e não têm parâmetros fixos no Quadro 3)."}
+                    </p>
+                    <button
+                      onClick={() => preencherDoQuadro3(zona, areaTerreno)}
+                      disabled={!QUADRO_3[zona]}
+                      className="shrink-0 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-[12px] font-medium text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Atualizar do Quadro 3
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <SelectField
+                      label="Zona"
+                      value={zona}
+                      onChange={(e) => handleZonaChange(e.target.value)}
+                      options={ZONAS_SP}
+                    />
+                    <Field
+                      label="Tipo de zona"
+                      value={QUADRO_3[zona]?.tipo || "—"}
+                      disabled
+                    />
+                    <Field
+                      label="CA mínimo da zona"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].caMinimo === null ? "NA — não se aplica" : "0,00"
+                      }
+                      value={caMinimoZona}
+                      onChange={(e) => setCaMinimoZona(e.target.value)}
+                    />
+                    <Field
+                      label="CA básico da zona"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].caBasico === null ? "NA — não se aplica" : "0,00"
+                      }
+                      value={caBasicoZona}
+                      onChange={(e) => setCaBasicoZona(e.target.value)}
+                    />
+                    <Field
+                      label="CA máximo da zona"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].caMaximo === null ? "NA — não se aplica" : "0,00"
+                      }
+                      value={caMaximoZona}
+                      onChange={(e) => setCaMaximoZona(e.target.value)}
+                    />
+                    <div>
+                      <Field
+                        label="Majoração CA (bônus urbanístico)"
+                        unit="%"
+                        placeholder={agregados.cotaSolidariedadeAtiva ? "20,00 (automático)" : "0,00"}
+                        value={majoracaoCA}
+                        onChange={(e) => setMajoracaoCA(e.target.value)}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        {agregados.cotaSolidariedadeAtiva
+                          ? "Preenchido automaticamente com 20% (bônus da Cota de Solidariedade, seção abaixo). Digite outro valor aqui para sobrescrever."
+                          : "Sem Cota de Solidariedade ativa, não há bônus automático. Use este campo apenas para simular outros incentivos específicos (fruição pública, térreo ativo, outorga onerosa) — ele não deve herdar o bônus residencial da Cota de Solidariedade."}
+                      </p>
+                    </div>
+                    <Field
+                      label="CA máximo com benefícios"
+                      placeholder={
+                        agregados.caMaximoComBeneficiosCalculado !== null
+                          ? `Sugestão: ${formatNumeroBR(agregados.caMaximoComBeneficiosCalculado)}`
+                          : "0,00"
+                      }
+                      value={caMaximoComBeneficiosManual}
+                      onChange={(e) => setCaMaximoComBeneficiosManual(e.target.value)}
+                    />
+                    <div>
+                      <Field
+                        label="TO máxima"
+                        unit="%"
+                        placeholder={
+                          QUADRO_3[zona] &&
+                          QUADRO_3[zona].to500 === null &&
+                          QUADRO_3[zona].toMais500 === null
+                            ? "NA — não se aplica"
+                            : "0,00"
+                        }
+                        value={toMaximaZona}
+                        onChange={(e) => setToMaximaZona(e.target.value)}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Preenchida automaticamente conforme a testada/área do terreno, a partir das
+                        colunas do Quadro 3: "T.O. para lotes até 500 m²" ou "T.O. para lotes igual ou
+                        superior a 500 m²".
+                      </p>
+                    </div>
+                    <Field
+                      label="Gabarito máximo"
+                      unit="m"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].gabarito === null ? "NA — não se aplica" : "0,00"
+                      }
+                      value={gabaritoMaximoZona}
+                      onChange={(e) => setGabaritoMaximoZona(e.target.value)}
+                    />
+                    <Field
+                      label="Cota Ambiental (QA exigido)"
+                      placeholder="0,00"
+                      value={cotaAmbiental}
+                      onChange={(e) => setCotaAmbiental(e.target.value)}
+                    />
+                    <Field
+                      label="TP necessária"
+                      placeholder="0,00"
+                      value={tpNecessaria}
+                      onChange={(e) => setTpNecessaria(e.target.value)}
+                    />
+                    <Field
+                      label="TP projeto"
+                      placeholder="0,00"
+                      value={tpProjeto}
+                      onChange={(e) => setTpProjeto(e.target.value)}
+                    />
+                    <Field
+                      label="Redução TP"
+                      value={agregados.reducaoTP !== null ? formatNumeroBR(agregados.reducaoTP) : "calculado"}
+                      disabled
+                    />
+                  </div>
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    CA máximo com benefícios = CA máximo da zona × (1 + Majoração ÷ 100). Redução TP = (TP
+                    projeto ÷ TP necessária) − 1.
+                  </p>
+
+                  {QUADRO_3[zona] && (
+                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[12px] font-medium text-slate-600">
+                        Recuos mínimos (m) — {zona}
+                      </p>
+                      <p className="mt-1 text-[12px] text-slate-500">
+                        Frente:{" "}
+                        {QUADRO_3[zona].recuoFrente !== null ? `${QUADRO_3[zona].recuoFrente} m` : "não se aplica"}
+                        {" · "}
+                        Fundos/laterais (edificação até 10m):{" "}
+                        {QUADRO_3[zona].recuoLatFundoAte10 !== null
+                          ? `${QUADRO_3[zona].recuoLatFundoAte10} m`
+                          : "não se aplica"}
+                        {" · "}
+                        Fundos/laterais (edificação acima de 10m):{" "}
+                        {QUADRO_3[zona].recuoLatFundoAcima10 !== null
+                          ? `${QUADRO_3[zona].recuoLatFundoAcima10} m`
+                          : "não se aplica"}
+                      </p>
+                      {QUADRO_3[zona].notas.length > 0 && (
+                        <div className="mt-2 flex flex-col gap-1">
+                          {QUADRO_3[zona].notas.map((letra) => (
+                            <p key={letra} className="text-[11px] text-amber-600">
+                              ({letra}) {NOTAS_QUADRO_3[letra]}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </SectionCard>
+
+                <SectionCard
+                  title="Cota-parte e fator social"
+                  subtitle="Parâmetros de fracionamento do solo, limite de adensamento e fator social"
+                >
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Field
+                      label="Cota-parte máxima"
+                      unit="m²"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].cotaParteMaxima === null
+                          ? "NA — não se aplica"
+                          : "0,00"
+                      }
+                      value={cotaParteMaxima}
+                      onChange={(e) => setCotaParteMaxima(e.target.value)}
+                    />
+                    <Field
+                      label="Nº mínimo de unidades"
+                      value={
+                        agregados.nMinimoUnidades !== null
+                          ? formatNumeroBR(agregados.nMinimoUnidades)
+                          : "calculado"
+                      }
+                      disabled
+                    />
+                    <Field
+                      label="Cota-parte mínima"
+                      unit="m²"
+                      placeholder="0,00"
+                      value={cotaParteMinima}
+                      onChange={(e) => setCotaParteMinima(e.target.value)}
+                    />
+                    <Field
+                      label="Nº máximo de unidades"
+                      value={
+                        agregados.nMaximoUnidades !== null
+                          ? formatNumeroBR(agregados.nMaximoUnidades)
+                          : "calculado"
+                      }
+                      disabled
+                    />
+                    <Field
+                      label="Cota-parte do projeto"
+                      unit="m²"
+                      placeholder="0,00"
+                      value={cotaParteProjeto}
+                      onChange={(e) => setCotaParteProjeto(e.target.value)}
+                    />
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[13px] font-medium text-slate-500">Categoria de Uso (Fs)</span>
+                      <select
+                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                        value={fsFatorSocial}
+                        onChange={(e) =>
+                          setFsFatorSocial(e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                      >
+                        <option value="">Selecione...</option>
+                        {FS_OPCOES.map((op) => (
+                          <option key={op.label} value={op.valor}>
+                            {op.label} ({formatNumeroBR(op.valor)})
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <Field
+                      label="Nº de unidades do projeto"
+                      placeholder="0"
+                      value={numeroUnidadesProjeto}
+                      numerico
+                      onChange={(e) => setNumeroUnidadesProjeto(e.target.value)}
+                    />
+                  </div>
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Nº mínimo de unidades = arredondar para cima (Área computável residencial ÷ (CA máximo
+                    da zona × Cota-parte máxima)). Nº máximo de unidades (limite de adensamento) =
+                    arredondar para baixo (Área computável residencial ÷ (CA máximo da zona × Cota-parte
+                    mínima)).
+                  </p>
+                </SectionCard>
+
+                <SectionCard
                   title="Cota de Solidariedade"
                   subtitle="Instrumento do Plano Diretor: destinação de área/unidades para HIS/HMP em troca de bônus de potencial construtivo"
                 >
@@ -2053,8 +2300,8 @@ export default function EstudoViabilidadeApp() {
                         Computável Total real do projeto (soma efetiva de blocos, unidades e estacionamento,
                         igual à do "Resumo do empreendimento") está em{" "}
                         <strong>{formatNumeroBR(agregados.areaComputavelTotal)} m²</strong>. O bônus de 20% é
-                        aplicado automaticamente no campo "Majoração CA" (aba Zoneamento) — você pode digitar
-                        outro valor lá para sobrescrever.
+                        aplicado automaticamente no campo "Majoração CA" (seção Parâmetros da zona, acima) —
+                        você pode digitar outro valor lá para sobrescrever.
                       </p>
 
                       <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
@@ -2422,260 +2669,6 @@ export default function EstudoViabilidadeApp() {
                     Privativa/Prefeitura = Área privativa total ÷ Área total de prefeitura (Quadro de Áreas
                     de Prefeitura, acima). Preencha as unidades na aba "Resumo das Unidades" — os dois
                     índices são recalculados automaticamente.
-                  </p>
-                </SectionCard>
-              </>
-            )}
-
-            {/* ---------------- ABA: ZONEAMENTO ---------------- */}
-            {activeTab === "zoneamento" && (
-              <>
-                <SectionCard
-                  title="Parâmetros da zona"
-                  subtitle="Índices urbanísticos aplicáveis conforme a legislação de zoneamento — Quadro 3, Lei nº 16.402/2016"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
-                    <p className="text-[12px] text-blue-700">
-                      {QUADRO_3[zona]
-                        ? "Valores preenchidos automaticamente a partir do Quadro 3 da Lei nº 16.402/2016. Você pode ajustar manualmente se necessário."
-                        : "Selecione uma zona para preencher automaticamente, ou digite os valores manualmente (algumas zonas especiais, como ZEP/ZEPEC/ZOE, seguem legislação específica e não têm parâmetros fixos no Quadro 3)."}
-                    </p>
-                    <button
-                      onClick={() => preencherDoQuadro3(zona, areaTerreno)}
-                      disabled={!QUADRO_3[zona]}
-                      className="shrink-0 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-[12px] font-medium text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Atualizar do Quadro 3
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <SelectField
-                      label="Zona"
-                      value={zona}
-                      onChange={(e) => handleZonaChange(e.target.value)}
-                      options={ZONAS_SP}
-                    />
-                    <Field
-                      label="Tipo de zona"
-                      value={QUADRO_3[zona]?.tipo || "—"}
-                      disabled
-                    />
-                    <Field
-                      label="CA mínimo da zona"
-                      placeholder={
-                        QUADRO_3[zona] && QUADRO_3[zona].caMinimo === null ? "NA — não se aplica" : "0,00"
-                      }
-                      value={caMinimoZona}
-                      onChange={(e) => setCaMinimoZona(e.target.value)}
-                    />
-                    <Field
-                      label="CA básico da zona"
-                      placeholder={
-                        QUADRO_3[zona] && QUADRO_3[zona].caBasico === null ? "NA — não se aplica" : "0,00"
-                      }
-                      value={caBasicoZona}
-                      onChange={(e) => setCaBasicoZona(e.target.value)}
-                    />
-                    <Field
-                      label="CA máximo da zona"
-                      placeholder={
-                        QUADRO_3[zona] && QUADRO_3[zona].caMaximo === null ? "NA — não se aplica" : "0,00"
-                      }
-                      value={caMaximoZona}
-                      onChange={(e) => setCaMaximoZona(e.target.value)}
-                    />
-                    <div>
-                      <Field
-                        label="Majoração CA (bônus urbanístico)"
-                        unit="%"
-                        placeholder={agregados.cotaSolidariedadeAtiva ? "20,00 (automático)" : "0,00"}
-                        value={majoracaoCA}
-                        onChange={(e) => setMajoracaoCA(e.target.value)}
-                      />
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        {agregados.cotaSolidariedadeAtiva
-                          ? "Preenchido automaticamente com 20% (bônus da Cota de Solidariedade, aba Dados do Terreno). Digite outro valor aqui para sobrescrever."
-                          : "Sem Cota de Solidariedade ativa, não há bônus automático. Use este campo apenas para simular outros incentivos específicos (fruição pública, térreo ativo, outorga onerosa) — ele não deve herdar o bônus residencial da Cota de Solidariedade."}
-                      </p>
-                    </div>
-                    <Field
-                      label="CA máximo com benefícios"
-                      placeholder={
-                        agregados.caMaximoComBeneficiosCalculado !== null
-                          ? `Sugestão: ${formatNumeroBR(agregados.caMaximoComBeneficiosCalculado)}`
-                          : "0,00"
-                      }
-                      value={caMaximoComBeneficiosManual}
-                      onChange={(e) => setCaMaximoComBeneficiosManual(e.target.value)}
-                    />
-                    <div>
-                      <Field
-                        label="TO máxima"
-                        unit="%"
-                        placeholder={
-                          QUADRO_3[zona] &&
-                          QUADRO_3[zona].to500 === null &&
-                          QUADRO_3[zona].toMais500 === null
-                            ? "NA — não se aplica"
-                            : "0,00"
-                        }
-                        value={toMaximaZona}
-                        onChange={(e) => setToMaximaZona(e.target.value)}
-                      />
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Preenchida automaticamente conforme a testada/área do terreno, a partir das
-                        colunas do Quadro 3: "T.O. para lotes até 500 m²" ou "T.O. para lotes igual ou
-                        superior a 500 m²".
-                      </p>
-                    </div>
-                    <Field
-                      label="Gabarito máximo"
-                      unit="m"
-                      placeholder={
-                        QUADRO_3[zona] && QUADRO_3[zona].gabarito === null ? "NA — não se aplica" : "0,00"
-                      }
-                      value={gabaritoMaximoZona}
-                      onChange={(e) => setGabaritoMaximoZona(e.target.value)}
-                    />
-                    <Field
-                      label="Cota Ambiental (QA exigido)"
-                      placeholder="0,00"
-                      value={cotaAmbiental}
-                      onChange={(e) => setCotaAmbiental(e.target.value)}
-                    />
-                    <Field
-                      label="TP necessária"
-                      placeholder="0,00"
-                      value={tpNecessaria}
-                      onChange={(e) => setTpNecessaria(e.target.value)}
-                    />
-                    <Field
-                      label="TP projeto"
-                      placeholder="0,00"
-                      value={tpProjeto}
-                      onChange={(e) => setTpProjeto(e.target.value)}
-                    />
-                    <Field
-                      label="Redução TP"
-                      value={agregados.reducaoTP !== null ? formatNumeroBR(agregados.reducaoTP) : "calculado"}
-                      disabled
-                    />
-                  </div>
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    CA máximo com benefícios = CA máximo da zona × (1 + Majoração ÷ 100). Redução TP = (TP
-                    projeto ÷ TP necessária) − 1.
-                  </p>
-
-                  {QUADRO_3[zona] && (
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[12px] font-medium text-slate-600">
-                        Recuos mínimos (m) — {zona}
-                      </p>
-                      <p className="mt-1 text-[12px] text-slate-500">
-                        Frente:{" "}
-                        {QUADRO_3[zona].recuoFrente !== null ? `${QUADRO_3[zona].recuoFrente} m` : "não se aplica"}
-                        {" · "}
-                        Fundos/laterais (edificação até 10m):{" "}
-                        {QUADRO_3[zona].recuoLatFundoAte10 !== null
-                          ? `${QUADRO_3[zona].recuoLatFundoAte10} m`
-                          : "não se aplica"}
-                        {" · "}
-                        Fundos/laterais (edificação acima de 10m):{" "}
-                        {QUADRO_3[zona].recuoLatFundoAcima10 !== null
-                          ? `${QUADRO_3[zona].recuoLatFundoAcima10} m`
-                          : "não se aplica"}
-                      </p>
-                      {QUADRO_3[zona].notas.length > 0 && (
-                        <div className="mt-2 flex flex-col gap-1">
-                          {QUADRO_3[zona].notas.map((letra) => (
-                            <p key={letra} className="text-[11px] text-amber-600">
-                              ({letra}) {NOTAS_QUADRO_3[letra]}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </SectionCard>
-
-                <SectionCard
-                  title="Cota-parte e fator social"
-                  subtitle="Parâmetros de fracionamento do solo, limite de adensamento e fator social"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field
-                      label="Cota-parte máxima"
-                      unit="m²"
-                      placeholder={
-                        QUADRO_3[zona] && QUADRO_3[zona].cotaParteMaxima === null
-                          ? "NA — não se aplica"
-                          : "0,00"
-                      }
-                      value={cotaParteMaxima}
-                      onChange={(e) => setCotaParteMaxima(e.target.value)}
-                    />
-                    <Field
-                      label="Nº mínimo de unidades"
-                      value={
-                        agregados.nMinimoUnidades !== null
-                          ? formatNumeroBR(agregados.nMinimoUnidades)
-                          : "calculado"
-                      }
-                      disabled
-                    />
-                    <Field
-                      label="Cota-parte mínima"
-                      unit="m²"
-                      placeholder="0,00"
-                      value={cotaParteMinima}
-                      onChange={(e) => setCotaParteMinima(e.target.value)}
-                    />
-                    <Field
-                      label="Nº máximo de unidades"
-                      value={
-                        agregados.nMaximoUnidades !== null
-                          ? formatNumeroBR(agregados.nMaximoUnidades)
-                          : "calculado"
-                      }
-                      disabled
-                    />
-                    <Field
-                      label="Cota-parte do projeto"
-                      unit="m²"
-                      placeholder="0,00"
-                      value={cotaParteProjeto}
-                      onChange={(e) => setCotaParteProjeto(e.target.value)}
-                    />
-                    <label className="flex flex-col gap-1.5">
-                      <span className="text-[13px] font-medium text-slate-500">Categoria de Uso (Fs)</span>
-                      <select
-                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                        value={fsFatorSocial}
-                        onChange={(e) =>
-                          setFsFatorSocial(e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                      >
-                        <option value="">Selecione...</option>
-                        {FS_OPCOES.map((op) => (
-                          <option key={op.label} value={op.valor}>
-                            {op.label} ({formatNumeroBR(op.valor)})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <Field
-                      label="Nº de unidades do projeto"
-                      placeholder="0"
-                      value={numeroUnidadesProjeto}
-                      numerico
-                      onChange={(e) => setNumeroUnidadesProjeto(e.target.value)}
-                    />
-                  </div>
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    Nº mínimo de unidades = arredondar para cima (Área computável residencial ÷ (CA máximo
-                    da zona × Cota-parte máxima)). Nº máximo de unidades (limite de adensamento) =
-                    arredondar para baixo (Área computável residencial ÷ (CA máximo da zona × Cota-parte
-                    mínima)).
                   </p>
                 </SectionCard>
               </>
@@ -3977,7 +3970,7 @@ export default function EstudoViabilidadeApp() {
                           <tr>
                             <td colSpan={4} className="py-4 text-center text-[12px] text-slate-400">
                               Nenhum custo lançado ainda. Se o projeto adotar "Pagamento em Recursos
-                              Financeiros (FUNDURB)" na Cota de Solidariedade (aba Dados do Terreno), a
+                              Financeiros (FUNDURB)" na Cota de Solidariedade (aba Terreno e Zoneamento), a
                               despesa aparece aqui automaticamente.
                             </td>
                           </tr>
@@ -4067,7 +4060,7 @@ export default function EstudoViabilidadeApp() {
                       reference={
                         caMaximoZona
                           ? `CA máximo da zona: ${formatNumeroBR(paraNumero(caMaximoZona))}`
-                          : "Preencha o CA máximo na aba Zoneamento"
+                          : "Preencha o CA máximo na aba Terreno e Zoneamento"
                       }
                     />
                     <MetricCard
@@ -4401,4 +4394,4 @@ export default function EstudoViabilidadeApp() {
       </div>
     </div>
   );
-}
+}
