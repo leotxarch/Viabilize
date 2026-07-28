@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   LandPlot,
   Building2,
@@ -927,8 +927,12 @@ export default function EstudoViabilidadeApp() {
 
   // --- Categorias de uso das unidades: catálogo ÚNICO do projeto (não se repete por bloco) ---
   const [categoriasTabelas, setCategoriasTabelas] = useState(CATEGORIAS_TABELAS_PADRAO);
-  const addCategoriaTabela = () =>
-    setCategoriasTabelas((lista) => [...lista, categoriaTabelaVazia()]);
+  const addCategoriaTabela = () => {
+    const nova = categoriaTabelaVazia();
+    setCategoriasTabelas((lista) => [...lista, nova]);
+    // Categoria recém-criada pelo usuário começa expandida — ele acabou de decidir usá-la.
+    setTabelasExpandidas((atual) => new Set(atual).add(nova.id));
+  };
   const renameCategoriaTabela = (catId, nome) =>
     setCategoriasTabelas((lista) => lista.map((c) => (c.id === catId ? { ...c, nome } : c)));
   // tipo: "naoComputavel" | "residencial" | "naoResidencial" — define se a categoria conta como
@@ -951,7 +955,11 @@ export default function EstudoViabilidadeApp() {
 
   // Blocos minimizados (apenas controle visual, não afeta os dados)
   const [blocosMinimizados, setBlocosMinimizados] = useState(() => new Set());
-  const [estacionamentoMinimizado, setEstacionamentoMinimizado] = useState(false);
+  // Estacionamento e Cota-parte são consulta pontual — começam recolhidos por padrão.
+  const [estacionamentoMinimizado, setEstacionamentoMinimizado] = useState(true);
+  const [cotaParteAberta, setCotaParteAberta] = useState(false);
+  // Uso Não Residencial (NR): módulo opcional, só existe em projetos de uso misto — começa desligado.
+  const [usoNaoResidencialAtivo, setUsoNaoResidencialAtivo] = useState("");
   const toggleMinimizarBloco = (id) =>
     setBlocosMinimizados((atual) => {
       const novo = new Set(atual);
@@ -1029,9 +1037,9 @@ export default function EstudoViabilidadeApp() {
       return novo;
     });
 
-  // Tabelas do Resumo das Unidades: por padrão começam minimizadas.
-  // Guardamos as que estão EXPANDIDAS (chave = blocoId + tabela).
-  const [tabelasExpandidas, setTabelasExpandidas] = useState(() => new Set());
+  // Tabelas do Resumo das Unidades: as avançadas (Incentivo, HIS e HMP, Fachada Ativa) começam
+  // recolhidas por padrão — só a Residencial (núcleo do estudo) começa expandida.
+  const [tabelasExpandidas, setTabelasExpandidas] = useState(() => new Set(["residencial"]));
   const toggleTabelaExpandida = (chave) =>
     setTabelasExpandidas((atual) => {
       const novo = new Set(atual);
@@ -1867,6 +1875,14 @@ export default function EstudoViabilidadeApp() {
     aplicarBonusHIS,
   ]);
 
+  // "HIS e HMP" é uma categoria dependente da Cota de Solidariedade — some/aparece sozinha por
+  // padrão junto com ela, sem precisar de um interruptor próprio.
+  useEffect(() => {
+    if (agregados.cotaSolidariedadeAtiva) {
+      setTabelasExpandidas((atual) => (atual.has("hisHmp") ? atual : new Set(atual).add("hisHmp")));
+    }
+  }, [agregados.cotaSolidariedadeAtiva]);
+
   // --- Exportar Indicadores Gerais ---
   // PDF: usa a caixa de impressão do próprio navegador (formatada para A4 via CSS @page),
   // que já oferece "Salvar como PDF" sem precisar de nenhuma biblioteca extra.
@@ -2112,7 +2128,7 @@ export default function EstudoViabilidadeApp() {
 
                 <SectionCard
                   title="Áreas do terreno"
-                  subtitle="Áreas totais, de reserva e quinhões (residencial / não residencial)"
+                  subtitle="Áreas totais, de reserva e quinhão residencial"
                 >
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <Field
@@ -2143,13 +2159,6 @@ export default function EstudoViabilidadeApp() {
                       disabled
                     />
                     <Field
-                      label="Quinhão não residencial (NR)"
-                      unit="m²"
-                      placeholder="0,00"
-                      value={quinhaoNaoResidencial}
-                      onChange={(e) => setQuinhaoNaoResidencial(e.target.value)}
-                    />
-                    <Field
                       label="Quinhão residencial"
                       unit="m²"
                       value={agregados.quinhaoResidencial !== null ? formatNumeroBR(agregados.quinhaoResidencial) : "—"}
@@ -2157,9 +2166,57 @@ export default function EstudoViabilidadeApp() {
                     />
                   </div>
                   <p className="mt-3 text-[12px] text-slate-400">
-                    Quinhão residencial = Área remanescente − Quinhão não residencial. Usados no cálculo de
-                    potencial construtivo por uso (seção "Potencial Construtivo por Uso", abaixo), já que
-                    R2V e NR aplicam o CA sobre bases de área diferentes.
+                    Quinhão residencial = Área remanescente − Quinhão não residencial (módulo "Uso Não
+                    Residencial (NR)", abaixo — ative-o se o projeto tiver uso comercial/NR).
+                  </p>
+                </SectionCard>
+
+                <SectionCard
+                  title="Uso Não Residencial (NR)"
+                  subtitle="Módulo opcional — ative apenas se o empreendimento tiver quinhão de terreno dedicado a uso comercial/não residencial"
+                >
+                  <label className="flex max-w-xs flex-col gap-1.5">
+                    <span className="text-[13px] font-medium text-slate-500">
+                      Este projeto tem uso Não Residencial?
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      value={usoNaoResidencialAtivo}
+                      onChange={(e) => setUsoNaoResidencialAtivo(e.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="Sim">Sim</option>
+                      <option value="Não">Não</option>
+                    </select>
+                  </label>
+
+                  {usoNaoResidencialAtivo === "Sim" && (
+                    <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                      <Field
+                        label="Quinhão não residencial (NR)"
+                        unit="m²"
+                        placeholder="0,00"
+                        value={quinhaoNaoResidencial}
+                        onChange={(e) => setQuinhaoNaoResidencial(e.target.value)}
+                      />
+                      <div>
+                        <Field
+                          label="Majoração CA (NR)"
+                          placeholder="0,00"
+                          value={majoracaoNR}
+                          onChange={(e) => setMajoracaoNR(e.target.value)}
+                        />
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Pontos de CA adicionados apenas ao uso Não Residencial, somados ao CA do R2V com
+                          benefícios. Ver "Potencial Construtivo por Uso", na seção Cota de Solidariedade.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Quinhão residencial = Área remanescente − Quinhão não residencial. Ambos entram no
+                    cálculo de potencial construtivo por uso, já que R2V e NR aplicam o CA sobre bases de
+                    área diferentes.
                   </p>
                 </SectionCard>
 
@@ -2241,19 +2298,6 @@ export default function EstudoViabilidadeApp() {
                       value={caMaximoComBeneficiosManual}
                       onChange={(e) => setCaMaximoComBeneficiosManual(e.target.value)}
                     />
-                    <div>
-                      <Field
-                        label="Majoração CA (NR)"
-                        placeholder="0,00"
-                        value={majoracaoNR}
-                        onChange={(e) => setMajoracaoNR(e.target.value)}
-                      />
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Pontos de CA adicionados apenas ao uso Não Residencial (ex: incentivo específico
-                        para NR), somados ao CA do R2V com benefícios. Ver "Potencial Construtivo por Uso",
-                        abaixo.
-                      </p>
-                    </div>
                     <div>
                       <Field
                         label="TO máxima"
@@ -2344,11 +2388,29 @@ export default function EstudoViabilidadeApp() {
                   )}
                 </SectionCard>
 
-                <SectionCard
-                  title="Cota-parte e fator social"
-                  subtitle="Parâmetros de fracionamento do solo, limite de adensamento e fator social"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <SectionCard title="" subtitle="">
+                  <button
+                    onClick={() => setCotaParteAberta((v) => !v)}
+                    className="mb-1 flex w-full items-center gap-2 text-left"
+                  >
+                    <ChevronRight
+                      size={15}
+                      className={`shrink-0 text-slate-400 transition-transform ${
+                        cotaParteAberta ? "rotate-90" : ""
+                      }`}
+                    />
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-slate-800">
+                        Cota-parte e fator social
+                      </h3>
+                      <p className="text-[13px] text-slate-400">
+                        Parâmetros de fracionamento do solo, limite de adensamento e fator social
+                      </p>
+                    </div>
+                  </button>
+                  {cotaParteAberta && (
+                  <>
+                  <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <Field
                       label="Cota-parte máxima"
                       unit="m²"
@@ -2423,6 +2485,8 @@ export default function EstudoViabilidadeApp() {
                     arredondar para baixo (Área computável residencial ÷ (CA máximo da zona × Cota-parte
                     mínima)).
                   </p>
+                  </>
+                  )}
                 </SectionCard>
 
                 <SectionCard
@@ -2753,6 +2817,7 @@ export default function EstudoViabilidadeApp() {
                   )}
                 </SectionCard>
 
+                {agregados.cotaSolidariedadeAtiva && (
                 <SectionCard
                   title="Potencial Construtivo por Uso"
                   subtitle="R2V e NR usam seus próprios quinhões de terreno; HMP e HIS são bônus adicionais aplicados sobre o terreno total"
@@ -2856,6 +2921,7 @@ export default function EstudoViabilidadeApp() {
                     não é igual à área computável total do empreendimento.
                   </p>
                 </SectionCard>
+                )}
 
                 <SectionCard
                   title="Quadro de Áreas de Prefeitura"
