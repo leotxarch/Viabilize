@@ -1655,7 +1655,10 @@ export default function EstudoViabilidadeApp() {
 
     // Atingida por quinhão: soma a área computável já alocada nos pavimentos, separada pela
     // categoria de uso (Residencial = quinhão residencial; categorias computáveis personalizadas
-    // marcadas como "Não Residencial" = quinhão NR).
+    // marcadas como "Não Residencial" = quinhão NR). Unidades marcadas como HIS/HMP (categoria da
+    // unidade, não a tabela) são excluídas daqui mesmo quando estão numa categoria computável comum
+    // (ex: "Residencial") — elas contam para as trilhas de bônus HMP/HIS abaixo, não para a trilha
+    // base, senão a base ficaria com "atingida" inflada e apontaria estouro falso.
     const somarComputavelPorQuinhao = (quinhaoAlvo) =>
       blocosComputados.reduce(
         (acc, bloco) =>
@@ -1668,6 +1671,7 @@ export default function EstudoViabilidadeApp() {
                 const ref = unidadesPorDescricaoGlobal[item.descricao];
                 const cat = ref ? categoriaPorId[ref.tabela] : null;
                 if (!cat || cat.naoComputavel || cat.quinhao !== quinhaoAlvo) return accItem;
+                if (unidadeEhCategoria(ref, "HIS") || unidadeEhCategoria(ref, "HMP")) return accItem;
                 return accItem + item.computavelItem * laje.quantidadePavimentos * bloco.multiplicadorBlocos;
               }, 0)
             );
@@ -1676,11 +1680,34 @@ export default function EstudoViabilidadeApp() {
       );
     const potencialR2VAtingida = somarComputavelPorQuinhao("residencial");
     const potencialNRAtingida = somarComputavelPorQuinhao("naoResidencial");
-    // HMP/HIS "atingida" usa a privativa das unidades HIS/HMP (mesma base de "contrapartidaAlocadaHIS/HMP"),
-    // já que essas unidades são incentivo não computável — a privativa é a medida real do que foi
-    // construído para consumir o bônus, não a computável (que fica zerada por design).
-    const potencialHMPAtingida = contrapartidaAlocadaHMP;
-    const potencialHISAtingida = contrapartidaAlocadaHIS;
+    // Atingida das trilhas de bônus HMP/HIS: soma as unidades marcadas com essa categoria (categoria
+    // da unidade — "HIS"/"HMP" —, não a tabela a que pertencem). Unidades em categorias não
+    // computáveis (ex: "HIS e HMP", incentivo da Cota de Solidariedade) são medidas pela privativa,
+    // já que sua computável é zerada por definição — a privativa é a única medida real do que foi
+    // construído para consumir o bônus. Unidades HIS/HMP computáveis, embutidas numa categoria
+    // computável comum (ex: "Residencial"), são medidas pela computável, para casar com a mesma
+    // base retirada da trilha R2V/NR acima (senão a área ficaria contada em dobro).
+    const somarTrilhaBonus = (categoriaAlvo) =>
+      blocosComputados.reduce(
+        (acc, bloco) =>
+          acc +
+          bloco.lajesComputadas.reduce((accLaje, laje) => {
+            if (laje.tipo === "atico") return accLaje;
+            return (
+              accLaje +
+              (laje.itens || []).reduce((accItem, item) => {
+                const ref = unidadesPorDescricaoGlobal[item.descricao];
+                if (!unidadeEhCategoria(ref, categoriaAlvo)) return accItem;
+                const cat = ref ? categoriaPorId[ref.tabela] : null;
+                const medida = cat && !cat.naoComputavel ? item.computavelItem : item.privativaItem;
+                return accItem + medida * laje.quantidadePavimentos * bloco.multiplicadorBlocos;
+              }, 0)
+            );
+          }, 0),
+        0
+      );
+    const potencialHMPAtingida = somarTrilhaBonus("HMP");
+    const potencialHISAtingida = somarTrilhaBonus("HIS");
 
     const potencialR2VFalta = potencialR2VMaximo !== null ? potencialR2VMaximo - potencialR2VAtingida : null;
     const potencialNRFalta = potencialNRMaximo !== null ? potencialNRMaximo - potencialNRAtingida : null;
