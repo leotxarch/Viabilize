@@ -2449,19 +2449,25 @@ export default function EstudoViabilidadeApp() {
                     />
                     <Field
                       label="CA mínimo da zona"
-                      placeholder="0,00"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].caMinimo === null ? "NA — não se aplica" : "0,00"
+                      }
                       value={caMinimoZona}
                       onChange={(e) => setCaMinimoZona(e.target.value)}
                     />
                     <Field
                       label="CA básico da zona"
-                      placeholder="0,00"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].caBasico === null ? "NA — não se aplica" : "0,00"
+                      }
                       value={caBasicoZona}
                       onChange={(e) => setCaBasicoZona(e.target.value)}
                     />
                     <Field
                       label="CA máximo da zona"
-                      placeholder="0,00"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].caMaximo === null ? "NA — não se aplica" : "0,00"
+                      }
                       value={caMaximoZona}
                       onChange={(e) => setCaMaximoZona(e.target.value)}
                     />
@@ -2488,17 +2494,32 @@ export default function EstudoViabilidadeApp() {
                       value={caMaximoComBeneficiosManual}
                       onChange={(e) => setCaMaximoComBeneficiosManual(e.target.value)}
                     />
-                    <Field
-                      label="TO máxima"
-                      unit="%"
-                      placeholder="0,00"
-                      value={toMaximaZona}
-                      onChange={(e) => setToMaximaZona(e.target.value)}
-                    />
+                    <div>
+                      <Field
+                        label="TO máxima"
+                        unit="%"
+                        placeholder={
+                          QUADRO_3[zona] &&
+                          QUADRO_3[zona].to500 === null &&
+                          QUADRO_3[zona].toMais500 === null
+                            ? "NA — não se aplica"
+                            : "0,00"
+                        }
+                        value={toMaximaZona}
+                        onChange={(e) => setToMaximaZona(e.target.value)}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Preenchida automaticamente conforme a testada/área do terreno, a partir das
+                        colunas do Quadro 3: "T.O. para lotes até 500 m²" ou "T.O. para lotes igual ou
+                        superior a 500 m²".
+                      </p>
+                    </div>
                     <Field
                       label="Gabarito máximo"
                       unit="m"
-                      placeholder="0,00"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].gabarito === null ? "NA — não se aplica" : "0,00"
+                      }
                       value={gabaritoMaximoZona}
                       onChange={(e) => setGabaritoMaximoZona(e.target.value)}
                     />
@@ -2571,7 +2592,11 @@ export default function EstudoViabilidadeApp() {
                     <Field
                       label="Cota-parte máxima"
                       unit="m²"
-                      placeholder="0,00"
+                      placeholder={
+                        QUADRO_3[zona] && QUADRO_3[zona].cotaParteMaxima === null
+                          ? "NA — não se aplica"
+                          : "0,00"
+                      }
                       value={cotaParteMaxima}
                       onChange={(e) => setCotaParteMaxima(e.target.value)}
                     />
