@@ -887,7 +887,10 @@ export default function EstudoViabilidadeApp() {
   const [cotaSolidariedade, setCotaSolidariedade] = useState("");
   const [modalidadeCotaSolidariedade, setModalidadeCotaSolidariedade] = useState("");
   const [valorReferenciaM2Fundurb, setValorReferenciaM2Fundurb] = useState("");
-  const [splitHISPercentual, setSplitHISPercentual] = useState("50");
+  // Padrão legal: para a área da Cota de Solidariedade ser não computável no próprio lote, os 10%
+  // mínimos devem ser destinados exclusivamente a HIS — por isso o split começa 100% HIS / 0% HMP.
+  // Continua editável: o usuário pode ajustar para simular cenários com HMP.
+  const [splitHISPercentual, setSplitHISPercentual] = useState("100");
   const [areaMediaUnidadeHIS, setAreaMediaUnidadeHIS] = useState("40");
   const [areaMediaUnidadeHMP, setAreaMediaUnidadeHMP] = useState("50");
   const [subdistrito, setSubdistrito] = useState("");
@@ -2773,11 +2776,21 @@ export default function EstudoViabilidadeApp() {
                           <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
                             Split da cota — HIS x HMP
                           </p>
+                          <div
+                            className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700"
+                            title="Nota legal: Para que a área da Cota de Solidariedade seja considerada não computável no próprio lote, a destinação mínima de 10% deve ser feita exclusivamente em unidades HIS."
+                          >
+                            <strong>Nota legal:</strong> para que a área da Cota de Solidariedade seja
+                            considerada não computável no próprio lote, a destinação mínima de 10% deve ser
+                            feita exclusivamente em unidades HIS. O split abaixo já começa em 100% HIS / 0%
+                            HMP por isso — ajuste livremente se quiser simular outros cenários (ex: parte em
+                            HMP), a mudança não é bloqueada.
+                          </div>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <Field
                               label="% destinado a HIS"
                               unit="%"
-                              placeholder="50,00"
+                              placeholder="100,00"
                               numerico
                               value={splitHISPercentual}
                               onChange={(e) => setSplitHISPercentual(e.target.value)}
