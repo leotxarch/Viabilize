@@ -1585,6 +1585,16 @@ export default function EstudoViabilidadeApp() {
     // mesma variável global (recalcula sozinha sempre que a área computável do projeto mudar).
     const contrapartidaHISNecessaria = cotaSolidariedadeAtiva ? areaComputavelTotal * 0.1 : 0;
 
+    // Benefícios não computáveis do quadro "Divisão por Terreno Virtual" — mesma planilha de
+    // referência (LUNI/AIMBERÊ): dois incentivos adicionais que acompanham a Cota de Solidariedade,
+    // calculados sobre a mesma Área Computável Total (mesma base da contrapartida HIS acima).
+    // "Benefício NR" = 20% da computável total (incentivo específico de uso Não Residencial).
+    // "Benefício empreendimento sem vagas" = 10% da computável total — pode ser usado para
+    // circulação não computável (é um teto de referência, não é lançado automaticamente em nenhum
+    // campo — o usuário aloca a área de circulação normalmente no Pavimento, dentro desse limite).
+    const beneficioNR = cotaSolidariedadeAtiva ? areaComputavelTotal * 0.2 : 0;
+    const beneficioEmpreendimentoSemVagas = cotaSolidariedadeAtiva ? areaComputavelTotal * 0.1 : 0;
+
     // Verifica se a unidade está marcada como HIS ou HMP pelo campo "Categoria" (funciona não
     // importa em qual tabela/categoria de tabela ela foi cadastrada — Resumo das Unidades, HIS e
     // HMP, ou qualquer categoria personalizada — e também via "Outro" com o texto "HIS"/"HMP").
@@ -1904,6 +1914,8 @@ export default function EstudoViabilidadeApp() {
       cotaSolidariedadeObrigatoria,
       cotaSolidariedadeAtiva,
       contrapartidaHISNecessaria,
+      beneficioNR,
+      beneficioEmpreendimentoSemVagas,
       contrapartidaHISAlocada,
       contrapartidaHISFalta,
       percentualContrapartidaAtendida,
@@ -2631,6 +2643,33 @@ export default function EstudoViabilidadeApp() {
                         <strong>{formatNumeroBR(agregados.areaComputavelTotal)} m²</strong>. O bônus de 20% é
                         aplicado automaticamente no campo "Majoração CA" (seção Parâmetros da zona, acima) —
                         você pode digitar outro valor lá para sobrescrever.
+                      </p>
+
+                      <p className="mb-3 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
+                        Outros benefícios não computáveis
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[11px] text-slate-400">Benefício NR (20% da computável total)</p>
+                          <p className="text-[15px] font-semibold text-slate-800">
+                            {formatNumeroBR(agregados.beneficioNR)} m²
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[11px] text-slate-400">
+                            Benefício empreendimento sem vagas (10% da computável total)
+                          </p>
+                          <p className="text-[15px] font-semibold text-slate-800">
+                            {formatNumeroBR(agregados.beneficioEmpreendimentoSemVagas)} m²
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-[11px] text-slate-400">
+                        Benefício NR = incentivo específico de uso Não Residencial. Benefício
+                        empreendimento sem vagas = pode ser usado para circulação não computável (aloque a
+                        área normalmente nos campos "Circulação" do Pavimento, respeitando esse teto). Os
+                        dois são calculados sobre a mesma Área Computável Total usada na Contrapartida HIS
+                        acima — mesmo quadro "Divisão por Terreno Virtual" da planilha de referência.
                       </p>
 
                       <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
