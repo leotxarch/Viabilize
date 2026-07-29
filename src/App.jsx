@@ -1432,13 +1432,15 @@ export default function EstudoViabilidadeApp() {
         totalAreaTecnicaUnidadesBloco +
         totalOrnamentoBloco;
       // "Não computável" no mesmo padrão da tabela do Pavimento: áreas comuns não computáveis do
-      // pavimento + Hall Privativo/Terraço/Floreira/Área técnica vindos das unidades alocadas.
-      // O Ático NÃO entra aqui: barrilete/casa de máquinas/reservatório/área técnica de cobertura são
-      // isentos tanto da computável quanto da área total de prefeitura (confirmado batendo a planilha
-      // real: a "NÃO COMPUTÁVEL TOTAL" oficial do bloco não soma o Ático, que só aparece como
-      // referência informativa no Quadro de Áreas de Prefeitura).
+      // pavimento + Hall Privativo/Terraço/Floreira/Área técnica vindos das unidades alocadas. O
+      // Ático inteiro (barrilete/casa de máquinas/reservatório/área técnica) ENTRA aqui — confirmado
+      // na fórmula oficial da planilha real: a "NÃO COMPUTÁVEL TOTAL" do bloco (RESIDENCIAL 1!H10)
+      // soma o próprio bloco do Ático (H1467) junto com os demais pavimentos. Uma correção anterior
+      // desta sessão excluía o Ático por engano, baseada numa leitura incompleta de uma linha de
+      // referência diferente (Quadro de Áreas de Prefeitura); revertido depois de validar contra a
+      // fórmula real de "Totais dos pavimentos" por grupo.
       const totalNaoComputavelTabelaBloco = lajesComputadas.reduce(
-        (acc, l) => acc + (l.tipo === "atico" ? 0 : l.naoComputavelTabelaPavimentos),
+        (acc, l) => acc + (l.tipo === "atico" ? l.totalPavimentosAtico : l.naoComputavelTabelaPavimentos),
         0
       );
 
@@ -1527,8 +1529,8 @@ export default function EstudoViabilidadeApp() {
     const areaTotalPrefeituraAntiga =
       sobresolosPrefeitura + subsolosPrefeitura + terreoObrasPrefeitura + pavimentosPrefeitura + aticoPrefeitura;
 
-    // Área não computável total do projeto = Não computável de todos os blocos (sem o Ático, que é
-    // isento) + Obras complementares + o total geral do Quadro de Estacionamento (Garagem + Outros
+    // Área não computável total do projeto = Não computável de todos os blocos (já incluindo o Ático
+    // inteiro) + Obras complementares + o total geral do Quadro de Estacionamento (Garagem + Outros
     // dos níveis).
     const areaNaoComputavelTotalProjeto =
       blocosComputados.reduce((acc, b) => acc + b.totalNaoComputavelTabelaBloco, 0) +
@@ -3035,8 +3037,8 @@ export default function EstudoViabilidadeApp() {
                   </div>
                   <p className="mt-3 text-[12px] text-slate-400">
                     Área não computável total = Não computável de todos os blocos (Circulação, Hall, Lazer,
-                    Terraço, Escada NR, Área técnica, Outros — sem o Ático, que é isento) + Obras
-                    complementares + Total geral do Quadro de Estacionamento (Garagem + Outros dos níveis).
+                    Terraço, Escada NR, Área técnica, Outros e o Ático inteiro) + Obras complementares +
+                    Total geral do Quadro de Estacionamento (Garagem + Outros dos níveis).
                   </p>
                 </SectionCard>
 
