@@ -243,7 +243,19 @@ const FS_OPCOES = [
   { label: "Interesse Social (HIS)", valor: 0 },
 ];
 
-function Field({ label, unit, placeholder, type = "text", value, onChange, numerico, ...props }) {
+function Field({
+  label,
+  unit,
+  placeholder,
+  type = "text",
+  value,
+  onChange,
+  numerico,
+  labelEditable,
+  labelValue,
+  onLabelChange,
+  ...props
+}) {
   const ehNumerico = unit === "m²" || unit === "%" || numerico;
   const handleBlur = () => {
     if (!ehNumerico || !onChange || typeof value !== "string" || value.trim() === "") return;
@@ -260,9 +272,23 @@ function Field({ label, unit, placeholder, type = "text", value, onChange, numer
     }
     navegarComSetas(e);
   };
+  // Quando labelEditable, o rótulo vira um campo de texto (rótulo padrão como placeholder) — usado
+  // pelas seções "Outros"/"Outros não computável" do Pavimento, que podem ser renomeadas livremente.
+  const Wrapper = labelEditable ? "div" : "label";
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-[13px] font-medium text-slate-500">{label}</span>
+    <Wrapper className="flex flex-col gap-1.5">
+      {labelEditable ? (
+        <input
+          type="text"
+          value={labelValue}
+          onChange={onLabelChange}
+          placeholder={label}
+          title="Clique para renomear"
+          className="w-fit max-w-full rounded border border-transparent bg-transparent px-0.5 text-[13px] font-medium text-slate-500 outline-none hover:border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        />
+      ) : (
+        <span className="text-[13px] font-medium text-slate-500">{label}</span>
+      )}
       <div className="relative">
         <input
           type={type}
@@ -281,7 +307,7 @@ function Field({ label, unit, placeholder, type = "text", value, onChange, numer
           </span>
         )}
       </div>
-    </label>
+    </Wrapper>
   );
 }
 
@@ -759,6 +785,7 @@ function lajeVaziaFactory() {
     lazerHIS: "",
     terraco: "",
     outros: "",
+    outrosNome: "",
     // Não computáveis
     circulacaoR: "",
     hallR: "",
@@ -767,6 +794,7 @@ function lajeVaziaFactory() {
     escadaNR: "",
     areaTecnica: "",
     outrosNaoComputavel: "",
+    outrosNaoComputavelNome: "",
     terracoCR: "",
     unidadesNoPavimento: [],
     // Campos específicos do tipo "atico"
@@ -839,7 +867,6 @@ const nivelEstacionamentoVazio = () => ({
 
 export default function EstudoViabilidadeApp() {
   const [activeTab, setActiveTab] = useState("terreno");
-  const [identificacaoAberta, setIdentificacaoAberta] = useState(false);
 
   // --- Identificação do estudo (sidebar) ---
   const [cliente, setCliente] = useState("");
@@ -2048,110 +2075,77 @@ export default function EstudoViabilidadeApp() {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
+        {/* Sidebar: Identificação do estudo — fixa (sticky) enquanto rola a página */}
         <aside className="no-print hidden w-64 shrink-0 border-r border-slate-200 bg-white px-4 py-6 md:block">
-          <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            Seções do estudo
-          </p>
-          <nav className="flex flex-col gap-1">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
-                    isActive
-                      ? "bg-blue-50 text-blue-700 font-medium"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                  }`}
-                >
-                  <Icon size={17} className={isActive ? "text-blue-600" : "text-slate-400"} />
-                  {tab.label}
-                  {isActive && <ChevronRight size={15} className="ml-auto text-blue-400" />}
-                </button>
-              );
-            })}
-          </nav>
-
+          <div className="sticky top-6">
+            <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              Identificação do estudo
+            </p>
+            <div className="flex flex-col gap-3 px-2">
+              <Field
+                label="Cliente"
+                placeholder="Nome do cliente"
+                value={cliente}
+                onChange={(e) => setCliente(e.target.value)}
+              />
+              <Field
+                label="Nome do projeto"
+                placeholder="Ex: Residencial Jardins"
+                value={nomeProjeto}
+                onChange={(e) => setNomeProjeto(e.target.value)}
+              />
+              <Field
+                label="Arquiteto responsável"
+                placeholder="Nome"
+                value={arquitetoResponsavel}
+                onChange={(e) => setArquitetoResponsavel(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Field
+                  label="Opção"
+                  placeholder="01"
+                  value={opcaoEstudo}
+                  onChange={(e) => setOpcaoEstudo(e.target.value)}
+                />
+                <Field
+                  label="Revisão"
+                  placeholder="R0"
+                  value={revisaoEstudo}
+                  onChange={(e) => setRevisaoEstudo(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         </aside>
 
         {/* Main content */}
         <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8">
           <div className="mx-auto max-w-5xl flex flex-col gap-6">
-            {/* Mobile tabs */}
-            <div className="no-print flex gap-2 overflow-x-auto md:hidden">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`shrink-0 rounded-full px-4 py-1.5 text-sm ${
-                    activeTab === tab.id
-                      ? "bg-blue-600 text-white"
-                      : "bg-white text-slate-500 border border-slate-200"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Identificação do estudo — visível em qualquer tamanho de tela */}
-            <div className="rounded-lg border border-slate-200 bg-white">
-              <button
-                onClick={() => setIdentificacaoAberta((v) => !v)}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left"
-              >
-                <ChevronRight
-                  size={15}
-                  className={`shrink-0 text-slate-400 transition-transform ${
-                    identificacaoAberta ? "rotate-90" : ""
-                  }`}
-                />
-                <span className="text-[13px] font-medium text-slate-600">Identificação do estudo</span>
-                {!identificacaoAberta && (nomeProjeto || cliente) && (
-                  <span className="ml-1 truncate text-[12px] text-slate-400">
-                    — {[nomeProjeto, cliente].filter(Boolean).join(" · ")}
-                  </span>
-                )}
-              </button>
-              {identificacaoAberta && (
-                <div className="grid grid-cols-1 gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <Field
-                    label="Cliente"
-                    placeholder="Nome do cliente"
-                    value={cliente}
-                    onChange={(e) => setCliente(e.target.value)}
-                  />
-                  <Field
-                    label="Nome do projeto"
-                    placeholder="Ex: Residencial Jardins"
-                    value={nomeProjeto}
-                    onChange={(e) => setNomeProjeto(e.target.value)}
-                  />
-                  <Field
-                    label="Arquiteto responsável"
-                    placeholder="Nome"
-                    value={arquitetoResponsavel}
-                    onChange={(e) => setArquitetoResponsavel(e.target.value)}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field
-                      label="Opção"
-                      placeholder="01"
-                      value={opcaoEstudo}
-                      onChange={(e) => setOpcaoEstudo(e.target.value)}
-                    />
-                    <Field
-                      label="Revisão"
-                      placeholder="R0"
-                      value={revisaoEstudo}
-                      onChange={(e) => setRevisaoEstudo(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
+            {/* Seções do estudo — fixa (sticky) no topo do conteúdo enquanto rola a página */}
+            <div className="no-print sticky top-0 z-10 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
+              <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">
+                Seções do estudo
+              </p>
+              <div className="flex gap-2 overflow-x-auto">
+                {TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm ${
+                        isActive
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-slate-500 border border-slate-200"
+                      }`}
+                    >
+                      <Icon size={15} className={isActive ? "text-white" : "text-slate-400"} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ---------------- ABA: TERRENO E ZONEAMENTO ---------------- */}
@@ -3428,7 +3422,7 @@ export default function EstudoViabilidadeApp() {
                                 </div>
                               </div>
 
-                              <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
+                              <p className="mb-2 mt-5 text-[13px] font-bold uppercase tracking-wide text-slate-700">
                                 Computáveis
                               </p>
                               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -3475,15 +3469,20 @@ export default function EstudoViabilidadeApp() {
                                   placeholder="0,00"
                                   value={laje.outros}
                                   onChange={(e) => updateLaje(bloco.id, laje.id, "outros", e.target.value)}
+                                  labelEditable
+                                  labelValue={laje.outrosNome}
+                                  onLabelChange={(e) =>
+                                    updateLaje(bloco.id, laje.id, "outrosNome", e.target.value)
+                                  }
                                 />
                               </div>
 
-                              <p className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
+                              <p className="mb-2 mt-5 text-[13px] font-bold uppercase tracking-wide text-slate-700">
                                 Não Computáveis
                               </p>
                               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 <Field
-                                  label="Circulação R não computável"
+                                  label="Circulação R"
                                   unit="m²"
                                   placeholder="0,00"
                                   value={laje.circulacaoR}
@@ -3492,21 +3491,21 @@ export default function EstudoViabilidadeApp() {
                                   }
                                 />
                                 <Field
-                                  label="Hall R não computável"
+                                  label="Hall R"
                                   unit="m²"
                                   placeholder="0,00"
                                   value={laje.hallR}
                                   onChange={(e) => updateLaje(bloco.id, laje.id, "hallR", e.target.value)}
                                 />
                                 <Field
-                                  label="Lazer R não computável"
+                                  label="Lazer R"
                                   unit="m²"
                                   placeholder="0,00"
                                   value={laje.lazerR}
                                   onChange={(e) => updateLaje(bloco.id, laje.id, "lazerR", e.target.value)}
                                 />
                                 <Field
-                                  label="Terraço C. NR não computável"
+                                  label="Terraço C. NR"
                                   unit="m²"
                                   placeholder="0,00"
                                   value={laje.terracoCNr}
@@ -3522,7 +3521,7 @@ export default function EstudoViabilidadeApp() {
                                   onChange={(e) => updateLaje(bloco.id, laje.id, "escadaNR", e.target.value)}
                                 />
                                 <Field
-                                  label="Área técnica não computável"
+                                  label="Área técnica"
                                   unit="m²"
                                   placeholder="0,00"
                                   value={laje.areaTecnica}
@@ -3531,16 +3530,21 @@ export default function EstudoViabilidadeApp() {
                                   }
                                 />
                                 <Field
-                                  label="Outros não computável"
+                                  label="Outros"
                                   unit="m²"
                                   placeholder="0,00"
                                   value={laje.outrosNaoComputavel}
                                   onChange={(e) =>
                                     updateLaje(bloco.id, laje.id, "outrosNaoComputavel", e.target.value)
                                   }
+                                  labelEditable
+                                  labelValue={laje.outrosNaoComputavelNome}
+                                  onLabelChange={(e) =>
+                                    updateLaje(bloco.id, laje.id, "outrosNaoComputavelNome", e.target.value)
+                                  }
                                 />
                                 <Field
-                                  label="Terraço C. R não computável"
+                                  label="Terraço C. R"
                                   unit="m²"
                                   placeholder="0,00"
                                   value={laje.terracoCR}
