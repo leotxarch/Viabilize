@@ -1598,6 +1598,12 @@ export default function EstudoViabilidadeApp() {
       );
     const contrapartidaHISAlocada = somarAlocadoHisHmp(null);
     const contrapartidaHISFalta = contrapartidaHISNecessaria - contrapartidaHISAlocada;
+    // % atendido = já alocado ÷ exigido, sempre travado em 100% quando a exigência já foi cumprida
+    // (evita mostrar "0,00 m²" no lugar de "Atendido", que parecia dizer que nada foi alocado).
+    const percentualContrapartidaAtendida =
+      contrapartidaHISNecessaria > 0
+        ? Math.min((contrapartidaHISAlocada / contrapartidaHISNecessaria) * 100, 100)
+        : 100;
 
     // --- Split da Cota (HIS x HMP) para a modalidade de Execução Física ---
     // % editável para HIS; HMP completa sempre para somar 100%.
@@ -1615,6 +1621,10 @@ export default function EstudoViabilidadeApp() {
     const contrapartidaAlocadaHMP = somarAlocadoHisHmp("HMP");
     const faltaAlocarHIS = areaHISNecessaria - contrapartidaAlocadaHIS;
     const faltaAlocarHMP = areaHMPNecessaria - contrapartidaAlocadaHMP;
+    const percentualAtendidoHIS =
+      areaHISNecessaria > 0 ? Math.min((contrapartidaAlocadaHIS / areaHISNecessaria) * 100, 100) : 100;
+    const percentualAtendidoHMP =
+      areaHMPNecessaria > 0 ? Math.min((contrapartidaAlocadaHMP / areaHMPNecessaria) * 100, 100) : 100;
 
     // --- Pagamento em Recursos Financeiros (FUNDURB / Compensação) ---
     // Quando escolhida essa modalidade, o empreendimento mantém 100% do potencial construtivo
@@ -1869,6 +1879,7 @@ export default function EstudoViabilidadeApp() {
       contrapartidaHISNecessaria,
       contrapartidaHISAlocada,
       contrapartidaHISFalta,
+      percentualContrapartidaAtendida,
       splitHISNum,
       splitHMPNum,
       areaHISNecessaria,
@@ -1879,6 +1890,8 @@ export default function EstudoViabilidadeApp() {
       contrapartidaAlocadaHMP,
       faltaAlocarHIS,
       faltaAlocarHMP,
+      percentualAtendidoHIS,
+      percentualAtendidoHMP,
       pagamentoFundurbAtivo,
       areaCotaFundurb,
       valorTotalFundurb,
@@ -2717,7 +2730,9 @@ export default function EstudoViabilidadeApp() {
                                   agregados.contrapartidaHISFalta > 0 ? "text-red-700" : "text-emerald-700"
                                 }`}
                               >
-                                {formatNumeroBR(Math.max(agregados.contrapartidaHISFalta, 0))} m²
+                                {agregados.contrapartidaHISFalta > 0
+                                  ? `${formatNumeroBR(agregados.contrapartidaHISFalta)} m²`
+                                  : `${formatNumeroBR(agregados.percentualContrapartidaAtendida, 0)}%`}
                               </p>
                             </div>
                           </div>
@@ -2808,7 +2823,9 @@ export default function EstudoViabilidadeApp() {
                                       agregados.faltaAlocarHIS > 0 ? "text-red-700" : "text-emerald-700"
                                     }`}
                                   >
-                                    {formatNumeroBR(Math.max(agregados.faltaAlocarHIS, 0))} m²
+                                    {agregados.faltaAlocarHIS > 0
+                                      ? `${formatNumeroBR(agregados.faltaAlocarHIS)} m²`
+                                      : `${formatNumeroBR(agregados.percentualAtendidoHIS, 0)}%`}
                                   </p>
                                 </div>
                               </div>
@@ -2859,7 +2876,9 @@ export default function EstudoViabilidadeApp() {
                                       agregados.faltaAlocarHMP > 0 ? "text-red-700" : "text-emerald-700"
                                     }`}
                                   >
-                                    {formatNumeroBR(Math.max(agregados.faltaAlocarHMP, 0))} m²
+                                    {agregados.faltaAlocarHMP > 0
+                                      ? `${formatNumeroBR(agregados.faltaAlocarHMP)} m²`
+                                      : `${formatNumeroBR(agregados.percentualAtendidoHMP, 0)}%`}
                                   </p>
                                 </div>
                               </div>
@@ -4591,8 +4610,14 @@ export default function EstudoViabilidadeApp() {
                                 agregados.contrapartidaHISFalta > 0 ? "text-red-600" : "text-emerald-600"
                               }`}
                             >
-                              {formatNumeroBR(Math.max(agregados.contrapartidaHISFalta, 0))}
-                              <span className="ml-1 text-[13px] font-medium text-slate-400">m²</span>
+                              {agregados.contrapartidaHISFalta > 0 ? (
+                                <>
+                                  {formatNumeroBR(agregados.contrapartidaHISFalta)}
+                                  <span className="ml-1 text-[13px] font-medium text-slate-400">m²</span>
+                                </>
+                              ) : (
+                                `${formatNumeroBR(agregados.percentualContrapartidaAtendida, 0)}%`
+                              )}
                             </p>
                           </div>
                         </>
