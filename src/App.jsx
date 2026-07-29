@@ -378,6 +378,7 @@ const CATEGORIA_OPCOES_PADRAO = ["Residencial", "Não Residencial", "Comercial",
 
 function TabelaUnidades({
   linhasGlobais,
+  descricoesDuplicadas,
   categoria,
   expandido,
   onToggle,
@@ -509,6 +510,14 @@ function TabelaUnidades({
                     value={u.descricao}
                     onChange={(e) => onUpdate(u.id, "descricao", e.target.value)}
                   />
+                  {u.descricao.trim() && descricoesDuplicadas && descricoesDuplicadas.has(u.descricao.trim()) && (
+                    <p
+                      className="mt-1 text-[10px] font-medium text-amber-600"
+                      title="Existe mais de uma unidade com esse nome. Isso é permitido, mas confira nos pavimentos qual das duas foi selecionada em cada alocação."
+                    >
+                      nome repetido no catálogo
+                    </p>
+                  )}
                 </td>
                 {categoriaFixa ? (
                   <td className="py-1.5 pr-3">
@@ -814,7 +823,9 @@ function AlcaArrastar({ className = "" }) {
   );
 }
 
-const itemUnidadeVazio = () => ({ id: Date.now() + Math.random(), descricao: "", quantidade: "" });
+// unidadeId identifica de forma única a unidade do catálogo alocada aqui (não confiar em "descricao"
+// para isso — duas unidades podem ter o mesmo nome). "descricao" fica só como cache de exibição.
+const itemUnidadeVazio = () => ({ id: Date.now() + Math.random(), unidadeId: "", descricao: "", quantidade: "" });
 
 // Cada "nível" representa um pavimento de garagem (Sobresolo, Térreo, Subsolo...)
 const nivelEstacionamentoVazio = () => ({
@@ -1099,6 +1110,28 @@ export default function EstudoViabilidadeApp() {
           : b
       )
     );
+  // Grava unidadeId (chave real de referência) e descricao (cache de exibição) juntos, num só
+  // update — usado quando o usuário escolhe a unidade no seletor do pavimento.
+  const selecionarUnidadeItemPavimento = (blocoId, lajeId, itemId, unidadeId, descricao) =>
+    setBlocos((lista) =>
+      lista.map((b) =>
+        b.id === blocoId
+          ? {
+              ...b,
+              lajes: b.lajes.map((l) =>
+                l.id === lajeId
+                  ? {
+                      ...l,
+                      unidadesNoPavimento: l.unidadesNoPavimento.map((it) =>
+                        it.id === itemId ? { ...it, unidadeId, descricao } : it
+                      ),
+                    }
+                  : l
+              ),
+            }
+          : b
+      )
+    );
 
   // ------------------------------------------------------------------
   // AGREGADOS (calculados automaticamente — mesma lógica da planilha)
@@ -1155,12 +1188,20 @@ export default function EstudoViabilidadeApp() {
       };
     };
 
+    // Resolve a unidade de catálogo referenciada por um item alocado num pavimento. Prioriza o
+    // "unidadeId" (identificador único, imune a nomes repetidos). Cai para busca por descrição só
+    // como compatibilidade com alocações antigas feitas antes desse campo existir — nesse caso, se
+    // houver duas unidades com o mesmo nome, o resultado é ambíguo (mesmo comportamento de antes);
+    // reabrir o seletor da unidade no pavimento resolve, porque grava o unidadeId.
+    const resolverUnidadeItem = (it, unidadesPorId, unidadesPorDescricaoGlobal) =>
+      (it.unidadeId && unidadesPorId[it.unidadeId]) || unidadesPorDescricaoGlobal[it.descricao] || null;
+
     // As unidades computáveis alocadas no pavimento vêm do catálogo GLOBAL do Resumo das Unidades
     // (de qualquer bloco do projeto): privativa/computável/vagas são somados a partir da quantidade
     // preenchida aqui, multiplicados depois pela quantidade de pavimentos.
-    const calcularLaje = (l, unidadesPorDescricaoGlobal) => {
+    const calcularLaje = (l, unidadesPorId, unidadesPorDescricaoGlobal) => {
       const itens = (l.unidadesNoPavimento || []).map((it) => {
-        const ref = unidadesPorDescricaoGlobal[it.descricao];
+        const ref = resolverUnidadeItem(it, unidadesPorId, unidadesPorDescricaoGlobal);
         const qtd = paraNumero(it.quantidade);
         const privativaUnit = ref ? ref.privativaUnidade : 0;
         const vagasUnit = ref ? ref.vagasUnidade : 0;
@@ -1331,15 +1372,31 @@ export default function EstudoViabilidadeApp() {
     const tipologiasGlobais = Array.from(
       new Set(linhasGlobais.map((l) => l.descricao.trim()).filter(Boolean))
     );
+    // unidadesPorDescricaoGlobal só existe para resolver alocações antigas (sem unidadeId ainda
+    // gravado) — quando duas unidades têm a mesma descrição, essa busca é ambígua por natureza
+    // (a última entrada do catálogo "ganha"). unidadesPorId é a fonte de verdade a partir de agora.
     const unidadesPorDescricaoGlobal = Object.fromEntries(
       linhasGlobais.filter((l) => l.descricao.trim()).map((l) => [l.descricao, l])
+    );
+    const unidadesPorId = Object.fromEntries(linhasGlobais.map((l) => [String(l.id), l]));
+    // Descrições repetidas no catálogo — usado só para avisar o usuário na interface (agora que a
+    // alocação é por ID, nomes repetidos não corrompem mais os cálculos, mas ainda merecem aviso
+    // porque dificultam saber qual unidade está selecionada em cada pavimento).
+    const contagemDescricoes = {};
+    linhasGlobais.forEach((l) => {
+      const d = l.descricao.trim();
+      if (!d) return;
+      contagemDescricoes[d] = (contagemDescricoes[d] || 0) + 1;
+    });
+    const descricoesDuplicadas = new Set(
+      Object.keys(contagemDescricoes).filter((d) => contagemDescricoes[d] > 1)
     );
 
     // Com o catálogo global pronto, calcula os pavimentos de cada bloco.
     const blocosComputados = blocos.map((bloco, i) => {
       const nomeExibicao = bloco.nome.trim() || bloco.uso || `Uso / Bloco ${i + 1}`;
 
-      const lajesComputadas = bloco.lajes.map((l) => calcularLaje(l, unidadesPorDescricaoGlobal));
+      const lajesComputadas = bloco.lajes.map((l) => calcularLaje(l, unidadesPorId, unidadesPorDescricaoGlobal));
       const totalPavimentosBloco = lajesComputadas.reduce((acc, l) => acc + l.quantidadePavimentos, 0);
       const totalAreaComumBloco = lajesComputadas.reduce(
         (acc, l) =>
@@ -1526,7 +1583,7 @@ export default function EstudoViabilidadeApp() {
             return (
               accLaje +
               (laje.itens || []).reduce((accItem, item) => {
-                const ref = unidadesPorDescricaoGlobal[item.descricao];
+                const ref = resolverUnidadeItem(item, unidadesPorId, unidadesPorDescricaoGlobal);
                 const contaComoHIS = unidadeEhCategoria(ref, "HIS");
                 const contaComoHMP = unidadeEhCategoria(ref, "HMP");
                 const bate = categoriaAlvo ? unidadeEhCategoria(ref, categoriaAlvo) : contaComoHIS || contaComoHMP;
@@ -1682,7 +1739,7 @@ export default function EstudoViabilidadeApp() {
             return (
               accLaje +
               (laje.itens || []).reduce((accItem, item) => {
-                const ref = unidadesPorDescricaoGlobal[item.descricao];
+                const ref = resolverUnidadeItem(item, unidadesPorId, unidadesPorDescricaoGlobal);
                 const cat = ref ? categoriaPorId[ref.tabela] : null;
                 if (!cat || cat.naoComputavel || cat.quinhao !== quinhaoAlvo) return accItem;
                 if (unidadeEhCategoria(ref, "HIS") || unidadeEhCategoria(ref, "HMP")) return accItem;
@@ -1710,7 +1767,7 @@ export default function EstudoViabilidadeApp() {
             return (
               accLaje +
               (laje.itens || []).reduce((accItem, item) => {
-                const ref = unidadesPorDescricaoGlobal[item.descricao];
+                const ref = resolverUnidadeItem(item, unidadesPorId, unidadesPorDescricaoGlobal);
                 if (!unidadeEhCategoria(ref, categoriaAlvo)) return accItem;
                 const cat = ref ? categoriaPorId[ref.tabela] : null;
                 const medida = cat && !cat.naoComputavel ? item.computavelItem : item.privativaItem;
@@ -1762,6 +1819,7 @@ export default function EstudoViabilidadeApp() {
       blocosComputados,
       linhasGlobais,
       tipologiasGlobais,
+      descricoesDuplicadas,
       niveisEstacionamentoComputados,
       totalGaragemEstacionamento,
       totalOutrosEstacionamento,
@@ -3483,21 +3541,42 @@ export default function EstudoViabilidadeApp() {
                                   </p>
                                 ) : (
                                   <div className="mt-2 flex flex-col gap-2">
-                                    {laje.itens.map((item) => (
+                                    {laje.itens.map((item) => {
+                                      // Referência efetiva: prioriza unidadeId; cai para descrição só em
+                                      // alocações antigas ainda não resselecionadas (ver resolverUnidadeItem).
+                                      const refAtual =
+                                        agregados.linhasGlobais.find(
+                                          (l) => String(l.id) === String(item.unidadeId)
+                                        ) || agregados.linhasGlobais.find((l) => l.descricao === item.descricao);
+                                      return (
                                       <div key={item.id} className="flex flex-wrap items-center gap-2">
                                         <select
                                           className="min-w-[160px] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800"
-                                          value={item.descricao}
-                                          onChange={(e) =>
-                                            updateItemUnidade(bloco.id, laje.id, item.id, "descricao", e.target.value)
-                                          }
+                                          value={refAtual ? String(refAtual.id) : ""}
+                                          onChange={(e) => {
+                                            const linha = agregados.linhasGlobais.find(
+                                              (l) => String(l.id) === e.target.value
+                                            );
+                                            selecionarUnidadeItemPavimento(
+                                              bloco.id,
+                                              laje.id,
+                                              item.id,
+                                              e.target.value,
+                                              linha ? linha.descricao : ""
+                                            );
+                                          }}
                                         >
                                           <option value="">Selecione a unidade...</option>
-                                          {agregados.tipologiasGlobais.map((tp) => (
-                                            <option key={tp} value={tp}>
-                                              {tp}
-                                            </option>
-                                          ))}
+                                          {agregados.linhasGlobais
+                                            .filter((l) => l.descricao.trim())
+                                            .map((l) => (
+                                              <option key={l.id} value={String(l.id)}>
+                                                {l.descricao}
+                                                {agregados.descricoesDuplicadas.has(l.descricao)
+                                                  ? ` — ${formatNumeroBR(l.privativaUnidade)} m² priv.`
+                                                  : ""}
+                                              </option>
+                                            ))}
                                         </select>
                                         <TableInput
                                           width="w-20"
@@ -3508,17 +3587,19 @@ export default function EstudoViabilidadeApp() {
                                             updateItemUnidade(bloco.id, laje.id, item.id, "quantidade", e.target.value)
                                           }
                                         />
-                                        {item.descricao &&
-                                          (() => {
-                                            const ref = agregados.linhasGlobais.find(
-                                              (l) => l.descricao === item.descricao
-                                            );
-                                            return ref && ref.categoria ? (
-                                              <span className="whitespace-nowrap rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                                                {ref.categoria}
-                                              </span>
-                                            ) : null;
-                                          })()}
+                                        {refAtual && refAtual.categoria ? (
+                                          <span className="whitespace-nowrap rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                                            {refAtual.categoria}
+                                          </span>
+                                        ) : null}
+                                        {refAtual && agregados.descricoesDuplicadas.has(refAtual.descricao) && (
+                                          <span
+                                            className="whitespace-nowrap rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-medium text-amber-600"
+                                            title="Existe mais de uma unidade com esse nome no Resumo das Unidades — confira se esta é a certa."
+                                          >
+                                            nome duplicado
+                                          </span>
+                                        )}
                                         <span className="text-[12px] text-slate-400">
                                           Privativa: {formatNumeroBR(item.privativaItem)} m² · Vagas:{" "}
                                           {formatNumeroBR(item.vagasItem)}
@@ -3530,7 +3611,8 @@ export default function EstudoViabilidadeApp() {
                                           <Trash2 size={14} />
                                         </button>
                                       </div>
-                                    ))}
+                                      );
+                                    })}
                                     <button
                                       onClick={() => addItemUnidade(bloco.id, laje.id)}
                                       className="mt-1 flex w-fit items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-3 py-1.5 text-[12px] font-medium text-slate-500 hover:border-blue-300 hover:text-blue-600"
@@ -4241,6 +4323,7 @@ export default function EstudoViabilidadeApp() {
                       <TabelaUnidades
                         key={categoria.id}
                         linhasGlobais={agregados.linhasGlobais}
+                        descricoesDuplicadas={agregados.descricoesDuplicadas}
                         categoria={categoria}
                         expandido={tabelasExpandidas.has(categoria.id)}
                         onToggle={() => toggleTabelaExpandida(categoria.id)}
