@@ -884,7 +884,6 @@ export default function EstudoViabilidadeApp() {
   const [tpProjeto, setTpProjeto] = useState("");
   const [cotaAmbiental, setCotaAmbiental] = useState("");
   const [cotaParteProjeto, setCotaParteProjeto] = useState("");
-  const [numeroUnidadesProjeto, setNumeroUnidadesProjeto] = useState("");
   const [toMaximaZona, setToMaximaZona] = useState("");
   const [gabaritoMaximoZona, setGabaritoMaximoZona] = useState("");
   const [cotaParteMaxima, setCotaParteMaxima] = useState("");
@@ -1763,6 +1762,30 @@ export default function EstudoViabilidadeApp() {
       );
     const potencialR2VAtingida = somarComputavelPorQuinhao("residencial");
     const potencialNRAtingida = somarComputavelPorQuinhao("naoResidencial");
+    // Nº de unidades do projeto (Cota-parte) = conta as unidades do quinhão residencial — R2V, HMP ou
+    // HIS — com área computável por unidade acima de 30 m², regra da nota de rodapé do Quadro 3
+    // ("*Aplica-se apenas ao quinhão residencial e às unidades residenciais: R2V e HMP ou HIS com área
+    // computável superior a 30,00 m²"). Diferente de somarComputavelPorQuinhao, aqui as unidades HIS/HMP
+    // NÃO são excluídas — a regra as inclui explicitamente.
+    const numeroUnidadesProjetoAcima30 = blocosComputados.reduce(
+      (acc, bloco) =>
+        acc +
+        bloco.lajesComputadas.reduce((accLaje, laje) => {
+          if (laje.tipo === "atico") return accLaje;
+          return (
+            accLaje +
+            (laje.itens || []).reduce((accItem, item) => {
+              const ref = resolverUnidadeItem(item, unidadesPorId, unidadesPorDescricaoGlobal);
+              const cat = ref ? categoriaPorId[ref.tabela] : null;
+              if (!ref || !cat || cat.quinhao !== "residencial" || ref.computavelUnidade <= 30) {
+                return accItem;
+              }
+              return accItem + item.qtd * laje.quantidadePavimentos * bloco.multiplicadorBlocos;
+            }, 0)
+          );
+        }, 0),
+      0
+    );
     // Atingida das trilhas de bônus HMP/HIS: soma as unidades marcadas com essa categoria (categoria
     // da unidade — "HIS"/"HMP" —, não a tabela a que pertencem). Unidades em categorias não
     // computáveis (ex: "HIS e HMP", incentivo da Cota de Solidariedade) são medidas pela privativa,
@@ -1871,6 +1894,7 @@ export default function EstudoViabilidadeApp() {
       caUtilizado,
       nMinimoUnidades,
       nMaximoUnidades,
+      numeroUnidadesProjetoAcima30,
       caMaximoComBeneficios,
       caMaximoComBeneficiosCalculado,
       areaComputavelComBonusCotaSolidariedade,
@@ -2545,13 +2569,16 @@ export default function EstudoViabilidadeApp() {
                       </select>
                     </label>
                     <Field
-                      label="Nº de unidades do projeto"
-                      placeholder="0"
-                      value={numeroUnidadesProjeto}
-                      numerico
-                      onChange={(e) => setNumeroUnidadesProjeto(e.target.value)}
+                      label="Nº de unidades do projeto (>30m²)"
+                      value={formatNumeroBR(agregados.numeroUnidadesProjetoAcima30, 0)}
+                      disabled
                     />
                   </div>
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Nº de unidades do projeto (&gt;30m²) = soma automática das unidades do quinhão
+                    residencial (R2V, HMP ou HIS) com área computável por unidade acima de 30 m², alocadas
+                    em "Dados do Empreendimento".
+                  </p>
                   <p className="mt-3 text-[12px] text-slate-400">
                     Nº mínimo de unidades = arredondar para cima (Área computável residencial ÷ (CA máximo
                     da zona × Cota-parte máxima)). Nº máximo de unidades (limite de adensamento) =
