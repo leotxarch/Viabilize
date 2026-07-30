@@ -1001,6 +1001,9 @@ export default function EstudoViabilidadeApp() {
   const [cotaParteAberta, setCotaParteAberta] = useState(false);
   // Uso Não Residencial (NR): módulo opcional, só existe em projetos de uso misto — começa desligado.
   const [usoNaoResidencialAtivo, setUsoNaoResidencialAtivo] = useState("");
+  // Nome do uso NR real (ex: "Hotel", "Comercial") — apenas rotula a linha na tabela "Potencial
+  // Construtivo por Uso" (vira "NR Computável (Hotel)"), não afeta nenhum cálculo.
+  const [nomeUsoNR, setNomeUsoNR] = useState("");
   const toggleMinimizarBloco = (id) =>
     setBlocosMinimizados((atual) => {
       const novo = new Set(atual);
@@ -1839,7 +1842,14 @@ export default function EstudoViabilidadeApp() {
 
     const potencialPorUso = [
       { uso: "R2V (Residencial)", ca: caR2V, base: "Quinhão residencial", maximo: potencialR2VMaximo, atingida: potencialR2VAtingida, falta: potencialR2VFalta },
-      { uso: "NR (Não Residencial)", ca: caNR, base: "Quinhão não residencial", maximo: potencialNRMaximo, atingida: potencialNRAtingida, falta: potencialNRFalta },
+      {
+        uso: nomeUsoNR.trim() ? `NR Computável (${nomeUsoNR.trim()})` : "NR (Não Residencial)",
+        ca: caNR,
+        base: "Quinhão não residencial",
+        maximo: potencialNRMaximo,
+        atingida: potencialNRAtingida,
+        falta: potencialNRFalta,
+      },
       { uso: "HMP (bônus)", ca: potencialHMPAtivo ? caHMP : null, base: "Terreno total", maximo: potencialHMPMaximo, atingida: potencialHMPAtivo ? potencialHMPAtingida : null, falta: potencialHMPFalta },
       { uso: "HIS (bônus)", ca: potencialHISAtivo ? caHIS : null, base: "Terreno total", maximo: potencialHISMaximo, atingida: potencialHISAtivo ? potencialHISAtingida : null, falta: potencialHISFalta },
     ];
@@ -1986,6 +1996,7 @@ export default function EstudoViabilidadeApp() {
     tpProjeto,
     quinhaoNaoResidencial,
     majoracaoNR,
+    nomeUsoNR,
     aplicarBonusHMP,
     aplicarBonusHIS,
   ]);
@@ -2291,6 +2302,18 @@ export default function EstudoViabilidadeApp() {
                         <p className="mt-1 text-[11px] text-slate-400">
                           Pontos de CA adicionados apenas ao uso Não Residencial, somados ao CA do R2V com
                           benefícios. Ver "Potencial Construtivo por Uso", na seção Cota de Solidariedade.
+                        </p>
+                      </div>
+                      <div>
+                        <Field
+                          label="Uso específico (opcional)"
+                          placeholder="Ex: Hotel, Comercial..."
+                          value={nomeUsoNR}
+                          onChange={(e) => setNomeUsoNR(e.target.value)}
+                        />
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Apenas rotula a linha na tabela "Potencial Construtivo por Uso" (ex: "NR
+                          Computável (Hotel)"). Não afeta nenhum cálculo.
                         </p>
                       </div>
                     </div>
