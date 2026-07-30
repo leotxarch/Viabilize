@@ -1419,14 +1419,17 @@ export default function EstudoViabilidadeApp() {
         deposito +
         hallPrivativo;
       const percentualTerracoPrivativa = privativaUnidade > 0 ? (terraco / privativaUnidade) * 100 : null;
-      // Só conta como área computável de fato quando a categoria da tabela não é "não computável"
-      // (ex: Residencial). Incentivo, Fachada Ativa, HIS/HMP e categorias personalizadas marcadas como
-      // "não computável" entram apenas na privativa.
-      const contaComoComputavel = categoriaInfo ? !categoriaInfo.naoComputavel : true;
+      // A "computável" de uma unidade é sempre o valor cru digitado no campo "Computável (m²)",
+      // não importa em qual tabela/categoria ela está cadastrada. A tabela (Incentivo, HIS e HMP
+      // etc.) é só uma organização visual — não zera a computável automaticamente. Isso permite
+      // unidades "híbridas" na planilha de referência (ex: "2D HIS (unidade híbrida)", cadastrada
+      // na tabela HIS e HMP mas com uma parte computável e outra parte incentivo não computável na
+      // MESMA linha) — zerar a computável por causa da tabela descartava essa parte legitimamente
+      // computável e sub-contava a Área Computável Total do projeto.
       return {
         ...u,
         privativaUnidade,
-        computavelUnidade: contaComoComputavel ? computavel : 0,
+        computavelUnidade: computavel,
         vagasUnidade: vagas,
         hallPrivativoUnidade: hallPrivativo,
         incentivoNaoComputavelUnidade: incentivoNaoComputavel,
