@@ -12,6 +12,10 @@ import {
   Wallet,
 } from "lucide-react";
 
+// Chave do autosave no localStorage — muda o número da versão se o formato salvo mudar de forma
+// incompatível no futuro (evita tentar restaurar dados salvos com um formato antigo/quebrado).
+const AUTOSAVE_KEY = "viabilize_autosave_v1";
+
 // Formata número no padrão pt-BR com N casas decimais (ex: 1,45)
 function formatNumeroBR(valor, casas = 2) {
   if (valor === null || valor === undefined || Number.isNaN(valor)) return "—";
@@ -1092,6 +1096,221 @@ export default function EstudoViabilidadeApp() {
       return novo;
     });
 
+  // --- Autosave (localStorage) ---
+  // Carrega uma vez ao montar: se houver um estudo salvo, restaura os campos preenchidos. Roda
+  // depois de todos os useState acima já terem os valores padrão, então os setters aqui só
+  // sobrescrevem o que existir salvo — sem dado salvo, o formulário permanece em branco.
+  useEffect(() => {
+    let dados;
+    try {
+      const bruto = localStorage.getItem(AUTOSAVE_KEY);
+      if (!bruto) return;
+      dados = JSON.parse(bruto);
+    } catch {
+      return; // dado corrompido — ignora e mantém os valores padrão
+    }
+    if (dados.activeTab !== undefined) setActiveTab(dados.activeTab);
+    if (dados.cliente !== undefined) setCliente(dados.cliente);
+    if (dados.nomeProjeto !== undefined) setNomeProjeto(dados.nomeProjeto);
+    if (dados.arquitetoResponsavel !== undefined) setArquitetoResponsavel(dados.arquitetoResponsavel);
+    if (dados.opcaoEstudo !== undefined) setOpcaoEstudo(dados.opcaoEstudo);
+    if (dados.revisaoEstudo !== undefined) setRevisaoEstudo(dados.revisaoEstudo);
+    if (dados.localEndereco !== undefined) setLocalEndereco(dados.localEndereco);
+    if (dados.municipio !== undefined) setMunicipio(dados.municipio);
+    if (dados.testadaTerreno !== undefined) setTestadaTerreno(dados.testadaTerreno);
+    if (dados.areaTerreno !== undefined) setAreaTerreno(dados.areaTerreno);
+    if (dados.reservaCalcada !== undefined) setReservaCalcada(dados.reservaCalcada);
+    if (dados.doacao !== undefined) setDoacao(dados.doacao);
+    if (dados.quinhaoNaoResidencial !== undefined) setQuinhaoNaoResidencial(dados.quinhaoNaoResidencial);
+    if (dados.subprefeitura !== undefined) setSubprefeitura(dados.subprefeitura);
+    if (dados.cotaSolidariedade !== undefined) setCotaSolidariedade(dados.cotaSolidariedade);
+    if (dados.modalidadeCotaSolidariedade !== undefined)
+      setModalidadeCotaSolidariedade(dados.modalidadeCotaSolidariedade);
+    if (dados.valorReferenciaM2Fundurb !== undefined)
+      setValorReferenciaM2Fundurb(dados.valorReferenciaM2Fundurb);
+    if (dados.splitHISPercentual !== undefined) setSplitHISPercentual(dados.splitHISPercentual);
+    if (dados.areaMediaUnidadeHIS !== undefined) setAreaMediaUnidadeHIS(dados.areaMediaUnidadeHIS);
+    if (dados.areaMediaUnidadeHMP !== undefined) setAreaMediaUnidadeHMP(dados.areaMediaUnidadeHMP);
+    if (dados.subdistrito !== undefined) setSubdistrito(dados.subdistrito);
+    if (dados.zona !== undefined) setZona(dados.zona);
+    if (dados.caMinimoZona !== undefined) setCaMinimoZona(dados.caMinimoZona);
+    if (dados.caBasicoZona !== undefined) setCaBasicoZona(dados.caBasicoZona);
+    if (dados.caMaximoZona !== undefined) setCaMaximoZona(dados.caMaximoZona);
+    if (dados.majoracaoCA !== undefined) setMajoracaoCA(dados.majoracaoCA);
+    if (dados.caMaximoComBeneficiosManual !== undefined)
+      setCaMaximoComBeneficiosManual(dados.caMaximoComBeneficiosManual);
+    if (dados.majoracaoNR !== undefined) setMajoracaoNR(dados.majoracaoNR);
+    if (dados.aplicarBonusHMP !== undefined) setAplicarBonusHMP(dados.aplicarBonusHMP);
+    if (dados.aplicarBonusHIS !== undefined) setAplicarBonusHIS(dados.aplicarBonusHIS);
+    if (dados.tpNecessaria !== undefined) setTpNecessaria(dados.tpNecessaria);
+    if (dados.tpProjeto !== undefined) setTpProjeto(dados.tpProjeto);
+    if (dados.cotaAmbiental !== undefined) setCotaAmbiental(dados.cotaAmbiental);
+    if (dados.cotaParteProjeto !== undefined) setCotaParteProjeto(dados.cotaParteProjeto);
+    if (dados.numeroUnidadesProjeto !== undefined) setNumeroUnidadesProjeto(dados.numeroUnidadesProjeto);
+    if (dados.toMaximaZona !== undefined) setToMaximaZona(dados.toMaximaZona);
+    if (dados.gabaritoMaximoZona !== undefined) setGabaritoMaximoZona(dados.gabaritoMaximoZona);
+    if (dados.cotaParteMaxima !== undefined) setCotaParteMaxima(dados.cotaParteMaxima);
+    if (dados.cotaParteMinima !== undefined) setCotaParteMinima(dados.cotaParteMinima);
+    if (dados.fsFatorSocial !== undefined) setFsFatorSocial(dados.fsFatorSocial);
+    if (dados.blocos !== undefined) setBlocos(dados.blocos);
+    if (dados.categoriasTabelas !== undefined) setCategoriasTabelas(dados.categoriasTabelas);
+    if (dados.usoNaoResidencialAtivo !== undefined) setUsoNaoResidencialAtivo(dados.usoNaoResidencialAtivo);
+    if (dados.nomeUsoNR !== undefined) setNomeUsoNR(dados.nomeUsoNR);
+    if (dados.unidadesGlobais !== undefined) setUnidadesGlobais(dados.unidadesGlobais);
+    if (dados.niveisEstacionamento !== undefined) setNiveisEstacionamento(dados.niveisEstacionamento);
+    if (dados.vagasBicicleta !== undefined) setVagasBicicleta(dados.vagasBicicleta);
+    if (dados.vagasDescobertas !== undefined) setVagasDescobertas(dados.vagasDescobertas);
+    if (dados.vagasUti !== undefined) setVagasUti(dados.vagasUti);
+    if (dados.vagasCaminhao !== undefined) setVagasCaminhao(dados.vagasCaminhao);
+    if (dados.vagasVisitante !== undefined) setVagasVisitante(dados.vagasVisitante);
+    if (dados.vagasCarWash !== undefined) setVagasCarWash(dados.vagasCarWash);
+    if (dados.vagasEletrico !== undefined) setVagasEletrico(dados.vagasEletrico);
+    if (dados.vagasExtras !== undefined) setVagasExtras(dados.vagasExtras);
+    if (dados.vagasPneManual !== undefined) setVagasPneManual(dados.vagasPneManual);
+    if (dados.vagasMotoManual !== undefined) setVagasMotoManual(dados.vagasMotoManual);
+    if (dados.obrasComplementares !== undefined) setObrasComplementares(dados.obrasComplementares);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Salva automaticamente (com pequeno debounce) sempre que algum campo preenchido pelo usuário
+  // muda — sobrevive a travamentos, fechar a aba ou atualizar a página (F5).
+  useEffect(() => {
+    const dados = {
+      activeTab,
+      cliente,
+      nomeProjeto,
+      arquitetoResponsavel,
+      opcaoEstudo,
+      revisaoEstudo,
+      localEndereco,
+      municipio,
+      testadaTerreno,
+      areaTerreno,
+      reservaCalcada,
+      doacao,
+      quinhaoNaoResidencial,
+      subprefeitura,
+      cotaSolidariedade,
+      modalidadeCotaSolidariedade,
+      valorReferenciaM2Fundurb,
+      splitHISPercentual,
+      areaMediaUnidadeHIS,
+      areaMediaUnidadeHMP,
+      subdistrito,
+      zona,
+      caMinimoZona,
+      caBasicoZona,
+      caMaximoZona,
+      majoracaoCA,
+      caMaximoComBeneficiosManual,
+      majoracaoNR,
+      aplicarBonusHMP,
+      aplicarBonusHIS,
+      tpNecessaria,
+      tpProjeto,
+      cotaAmbiental,
+      cotaParteProjeto,
+      numeroUnidadesProjeto,
+      toMaximaZona,
+      gabaritoMaximoZona,
+      cotaParteMaxima,
+      cotaParteMinima,
+      fsFatorSocial,
+      blocos,
+      categoriasTabelas,
+      usoNaoResidencialAtivo,
+      nomeUsoNR,
+      unidadesGlobais,
+      niveisEstacionamento,
+      vagasBicicleta,
+      vagasDescobertas,
+      vagasUti,
+      vagasCaminhao,
+      vagasVisitante,
+      vagasCarWash,
+      vagasEletrico,
+      vagasExtras,
+      vagasPneManual,
+      vagasMotoManual,
+      obrasComplementares,
+    };
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(dados));
+      } catch {
+        // localStorage indisponível ou cheio — autosave falha silenciosamente, sem travar o app
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [
+    activeTab,
+    cliente,
+    nomeProjeto,
+    arquitetoResponsavel,
+    opcaoEstudo,
+    revisaoEstudo,
+    localEndereco,
+    municipio,
+    testadaTerreno,
+    areaTerreno,
+    reservaCalcada,
+    doacao,
+    quinhaoNaoResidencial,
+    subprefeitura,
+    cotaSolidariedade,
+    modalidadeCotaSolidariedade,
+    valorReferenciaM2Fundurb,
+    splitHISPercentual,
+    areaMediaUnidadeHIS,
+    areaMediaUnidadeHMP,
+    subdistrito,
+    zona,
+    caMinimoZona,
+    caBasicoZona,
+    caMaximoZona,
+    majoracaoCA,
+    caMaximoComBeneficiosManual,
+    majoracaoNR,
+    aplicarBonusHMP,
+    aplicarBonusHIS,
+    tpNecessaria,
+    tpProjeto,
+    cotaAmbiental,
+    cotaParteProjeto,
+    numeroUnidadesProjeto,
+    toMaximaZona,
+    gabaritoMaximoZona,
+    cotaParteMaxima,
+    cotaParteMinima,
+    fsFatorSocial,
+    blocos,
+    categoriasTabelas,
+    usoNaoResidencialAtivo,
+    nomeUsoNR,
+    unidadesGlobais,
+    niveisEstacionamento,
+    vagasBicicleta,
+    vagasDescobertas,
+    vagasUti,
+    vagasCaminhao,
+    vagasVisitante,
+    vagasCarWash,
+    vagasEletrico,
+    vagasExtras,
+    vagasPneManual,
+    vagasMotoManual,
+    obrasComplementares,
+  ]);
+
+  // "Novo projeto": apaga o estudo salvo e recarrega a página em branco. Usa um modal próprio (em
+  // vez de window.confirm) porque o preview embutido do navegador engole o diálogo nativo do
+  // navegador sem mostrar nada — o clique parecia não fazer nada.
+  const [confirmandoNovoProjeto, setConfirmandoNovoProjeto] = useState(false);
+  const confirmarNovoProjeto = () => {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    window.location.reload();
+  };
+
   // --- Unidades computáveis alocadas dentro de um pavimento (laje) ---
   const addItemUnidade = (blocoId, lajeId) =>
     setBlocos((lista) =>
@@ -2116,8 +2335,47 @@ export default function EstudoViabilidadeApp() {
               {formatNumeroBR(agregados.faltaEstoura)}
             </span>
           </div>
+          <button
+            onClick={() => setConfirmandoNovoProjeto(true)}
+            title="Apaga todos os dados preenchidos e começa um estudo em branco"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-500 hover:border-red-300 hover:text-red-600"
+          >
+            <Trash2 size={14} />
+            Novo projeto
+          </button>
         </div>
       </header>
+
+      {confirmandoNovoProjeto && (
+        <div
+          className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+          onClick={() => setConfirmandoNovoProjeto(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-[15px] font-semibold text-slate-800">Começar um novo projeto?</h2>
+            <p className="mt-2 text-[13px] text-slate-500">
+              Isso vai apagar todos os dados preenchidos neste estudo e não pode ser desfeito.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmandoNovoProjeto(false)}
+                className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:border-slate-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarNovoProjeto}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-red-700"
+              >
+                Apagar tudo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex">
         {/* Sidebar: Identificação do estudo — fixa (sticky) enquanto rola a página */}
@@ -2280,67 +2538,6 @@ export default function EstudoViabilidadeApp() {
                   <p className="mt-3 text-[12px] text-slate-400">
                     Quinhão residencial = Área remanescente − Quinhão não residencial (módulo "Uso Não
                     Residencial (NR)", abaixo — ative-o se o projeto tiver uso comercial/NR).
-                  </p>
-                </SectionCard>
-
-                <SectionCard
-                  title="Uso Não Residencial (NR)"
-                  subtitle="Módulo opcional — ative apenas se o empreendimento tiver quinhão de terreno dedicado a uso comercial/não residencial"
-                >
-                  <label className="flex max-w-xs flex-col gap-1.5">
-                    <span className="text-[13px] font-medium text-slate-500">
-                      Este projeto tem uso Não Residencial?
-                    </span>
-                    <select
-                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      value={usoNaoResidencialAtivo}
-                      onChange={(e) => setUsoNaoResidencialAtivo(e.target.value)}
-                    >
-                      <option value="">Selecione...</option>
-                      <option value="Sim">Sim</option>
-                      <option value="Não">Não</option>
-                    </select>
-                  </label>
-
-                  {usoNaoResidencialAtivo === "Sim" && (
-                    <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
-                      <Field
-                        label="Quinhão não residencial (NR)"
-                        unit="m²"
-                        placeholder="0,00"
-                        value={quinhaoNaoResidencial}
-                        onChange={(e) => setQuinhaoNaoResidencial(e.target.value)}
-                      />
-                      <div>
-                        <Field
-                          label="Majoração CA (NR)"
-                          placeholder="0,00"
-                          value={majoracaoNR}
-                          onChange={(e) => setMajoracaoNR(e.target.value)}
-                        />
-                        <p className="mt-1 text-[11px] text-slate-400">
-                          Pontos de CA adicionados apenas ao uso Não Residencial, somados ao CA do R2V com
-                          benefícios. Ver "Potencial Construtivo por Uso", na seção Cota de Solidariedade.
-                        </p>
-                      </div>
-                      <div>
-                        <Field
-                          label="Uso específico (opcional)"
-                          placeholder="Ex: Hotel, Comercial..."
-                          value={nomeUsoNR}
-                          onChange={(e) => setNomeUsoNR(e.target.value)}
-                        />
-                        <p className="mt-1 text-[11px] text-slate-400">
-                          Apenas rotula a linha na tabela "Potencial Construtivo por Uso" (ex: "NR
-                          Computável (Hotel)"). Não afeta nenhum cálculo.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    Quinhão residencial = Área remanescente − Quinhão não residencial. Ambos entram no
-                    cálculo de potencial construtivo por uso, já que R2V e NR aplicam o CA sobre bases de
-                    área diferentes.
                   </p>
                 </SectionCard>
 
@@ -2611,6 +2808,67 @@ export default function EstudoViabilidadeApp() {
                   </p>
                   </>
                   )}
+                </SectionCard>
+
+                <SectionCard
+                  title="Uso Não Residencial (NR)"
+                  subtitle="Módulo opcional — ative apenas se o empreendimento tiver quinhão de terreno dedicado a uso comercial/não residencial"
+                >
+                  <label className="flex max-w-xs flex-col gap-1.5">
+                    <span className="text-[13px] font-medium text-slate-500">
+                      Este projeto tem uso Não Residencial?
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      value={usoNaoResidencialAtivo}
+                      onChange={(e) => setUsoNaoResidencialAtivo(e.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="Sim">Sim</option>
+                      <option value="Não">Não</option>
+                    </select>
+                  </label>
+
+                  {usoNaoResidencialAtivo === "Sim" && (
+                    <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                      <Field
+                        label="Quinhão não residencial (NR)"
+                        unit="m²"
+                        placeholder="0,00"
+                        value={quinhaoNaoResidencial}
+                        onChange={(e) => setQuinhaoNaoResidencial(e.target.value)}
+                      />
+                      <div>
+                        <Field
+                          label="Majoração CA (NR)"
+                          placeholder="0,00"
+                          value={majoracaoNR}
+                          onChange={(e) => setMajoracaoNR(e.target.value)}
+                        />
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Pontos de CA adicionados apenas ao uso Não Residencial, somados ao CA do R2V com
+                          benefícios. Ver "Potencial Construtivo por Uso", na seção Cota de Solidariedade.
+                        </p>
+                      </div>
+                      <div>
+                        <Field
+                          label="Uso específico (opcional)"
+                          placeholder="Ex: Hotel, Comercial..."
+                          value={nomeUsoNR}
+                          onChange={(e) => setNomeUsoNR(e.target.value)}
+                        />
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Apenas rotula a linha na tabela "Potencial Construtivo por Uso" (ex: "NR
+                          Computável (Hotel)"). Não afeta nenhum cálculo.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Quinhão residencial = Área remanescente − Quinhão não residencial. Ambos entram no
+                    cálculo de potencial construtivo por uso, já que R2V e NR aplicam o CA sobre bases de
+                    área diferentes.
+                  </p>
                 </SectionCard>
 
                 <SectionCard
@@ -3112,122 +3370,6 @@ export default function EstudoViabilidadeApp() {
                 </SectionCard>
                 )}
 
-                <SectionCard
-                  title="Quadro de Áreas de Prefeitura"
-                  subtitle="Área total construída considerada pela Prefeitura — Área computável total + Área não computável total"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Sobresolos" unit="m²" value={formatNumeroBR(agregados.sobresolosPrefeitura)} disabled />
-                    <Field label="Subsolos" unit="m²" value={formatNumeroBR(agregados.subsolosPrefeitura)} disabled />
-                    <Field
-                      label="Obras complementares"
-                      unit="m²"
-                      placeholder="0,00"
-                      value={obrasComplementares}
-                      onChange={(e) => setObrasComplementares(e.target.value)}
-                    />
-                    <Field
-                      label="Térreo coberto + Obras complementares"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.terreoObrasPrefeitura)}
-                      disabled
-                    />
-                    <Field
-                      label="Pavimentos (Computável + Não Computável)"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.pavimentosPrefeitura)}
-                      disabled
-                    />
-                    <Field label="Ático" unit="m²" value={formatNumeroBR(agregados.aticoPrefeitura)} disabled />
-                  </div>
-                  <p className="mt-3 text-[11px] text-slate-400">
-                    As linhas acima são só referência (de onde vêm as áreas de garagem/pavimentos/ático). O
-                    "Total" abaixo usa a fórmula oficial: Área computável total + Área não computável total.
-                  </p>
-                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[11px] text-slate-400">Área computável total</p>
-                      <p className="text-[15px] font-semibold text-slate-800">
-                        {formatNumeroBR(agregados.areaComputavelTotal)} m²
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[11px] text-slate-400">Área não computável total</p>
-                      <p className="text-[15px] font-semibold text-slate-800">
-                        {formatNumeroBR(agregados.areaNaoComputavelTotalProjeto)} m²
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                      <p className="text-[11px] text-blue-600">Total (Área de Prefeitura)</p>
-                      <p className="text-[18px] font-semibold text-blue-700">
-                        {formatNumeroBR(agregados.areaTotalPrefeitura)} m²
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    Área não computável total = Não computável de todos os blocos (Circulação, Hall, Lazer,
-                    Terraço, Escada NR, Área técnica, Outros e o Ático inteiro) + Obras complementares +
-                    Total geral do Quadro de Estacionamento (Garagem + Outros dos níveis).
-                  </p>
-                </SectionCard>
-
-                <SectionCard
-                  title="Índices Privativa/Terreno e Privativa/Prefeitura"
-                  subtitle="Somados automaticamente a partir do Resumo das Unidades — não são mais digitados"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field
-                      label="Área do terreno"
-                      unit="m²"
-                      value={formatNumeroBR(paraNumero(areaTerreno))}
-                      disabled
-                    />
-                    <Field
-                      label="Área privativa total"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.areaPrivativaTotal)}
-                      disabled
-                    />
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[13px] font-medium text-slate-500">Índice Privativa/Terreno</span>
-                      <div className="flex h-[38px] items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3">
-                        <Gauge size={16} className="text-blue-600" />
-                        <span className="text-[15px] font-semibold text-blue-700">
-                          {formatNumeroBR(agregados.indicePrivativaTerreno)}
-                        </span>
-                      </div>
-                    </div>
-                    <Field
-                      label="Área total de prefeitura"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.areaTotalPrefeitura)}
-                      disabled
-                    />
-                    <Field
-                      label="Área privativa total"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.areaPrivativaTotal)}
-                      disabled
-                    />
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[13px] font-medium text-slate-500">Índice Privativa/Prefeitura</span>
-                      <div className="flex h-[38px] items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3">
-                        <Gauge size={16} className="text-blue-600" />
-                        <span className="text-[15px] font-semibold text-blue-700">
-                          {agregados.indicePrivativaPrefeitura !== null
-                            ? formatNumeroBR(agregados.indicePrivativaPrefeitura)
-                            : "—"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    Índice Privativa/Terreno = Área privativa total ÷ Área do terreno. Índice
-                    Privativa/Prefeitura = Área privativa total ÷ Área total de prefeitura (Quadro de Áreas
-                    de Prefeitura, acima). Preencha as unidades na aba "Resumo das Unidades" — os dois
-                    índices são recalculados automaticamente.
-                  </p>
-                </SectionCard>
               </>
             )}
 
@@ -4666,6 +4808,123 @@ export default function EstudoViabilidadeApp() {
                       highlight
                     />
                   </div>
+                </SectionCard>
+
+                <SectionCard
+                  title="Quadro de Áreas de Prefeitura"
+                  subtitle="Área total construída considerada pela Prefeitura — Área computável total + Área não computável total"
+                >
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Field label="Sobresolos" unit="m²" value={formatNumeroBR(agregados.sobresolosPrefeitura)} disabled />
+                    <Field label="Subsolos" unit="m²" value={formatNumeroBR(agregados.subsolosPrefeitura)} disabled />
+                    <Field
+                      label="Obras complementares"
+                      unit="m²"
+                      placeholder="0,00"
+                      value={obrasComplementares}
+                      onChange={(e) => setObrasComplementares(e.target.value)}
+                    />
+                    <Field
+                      label="Térreo coberto + Obras complementares"
+                      unit="m²"
+                      value={formatNumeroBR(agregados.terreoObrasPrefeitura)}
+                      disabled
+                    />
+                    <Field
+                      label="Pavimentos (Computável + Não Computável)"
+                      unit="m²"
+                      value={formatNumeroBR(agregados.pavimentosPrefeitura)}
+                      disabled
+                    />
+                    <Field label="Ático" unit="m²" value={formatNumeroBR(agregados.aticoPrefeitura)} disabled />
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-400">
+                    As linhas acima são só referência (de onde vêm as áreas de garagem/pavimentos/ático). O
+                    "Total" abaixo usa a fórmula oficial: Área computável total + Área não computável total.
+                  </p>
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[11px] text-slate-400">Área computável total</p>
+                      <p className="text-[15px] font-semibold text-slate-800">
+                        {formatNumeroBR(agregados.areaComputavelTotal)} m²
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[11px] text-slate-400">Área não computável total</p>
+                      <p className="text-[15px] font-semibold text-slate-800">
+                        {formatNumeroBR(agregados.areaNaoComputavelTotalProjeto)} m²
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <p className="text-[11px] text-blue-600">Total (Área de Prefeitura)</p>
+                      <p className="text-[18px] font-semibold text-blue-700">
+                        {formatNumeroBR(agregados.areaTotalPrefeitura)} m²
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Área não computável total = Não computável de todos os blocos (Circulação, Hall, Lazer,
+                    Terraço, Escada NR, Área técnica, Outros e o Ático inteiro) + Obras complementares +
+                    Total geral do Quadro de Estacionamento (Garagem + Outros dos níveis).
+                  </p>
+                </SectionCard>
+
+                <SectionCard
+                  title="Índices Privativa/Terreno e Privativa/Prefeitura"
+                  subtitle="Somados automaticamente a partir do Resumo das Unidades — não são mais digitados"
+                >
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Field
+                      label="Área do terreno"
+                      unit="m²"
+                      value={formatNumeroBR(paraNumero(areaTerreno))}
+                      disabled
+                    />
+                    <Field
+                      label="Área privativa total"
+                      unit="m²"
+                      value={formatNumeroBR(agregados.areaPrivativaTotal)}
+                      disabled
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[13px] font-medium text-slate-500">Índice Privativa/Terreno</span>
+                      <div className="flex h-[38px] items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3">
+                        <Gauge size={16} className="text-blue-600" />
+                        <span className="text-[15px] font-semibold text-blue-700">
+                          {formatNumeroBR(agregados.indicePrivativaTerreno)}
+                        </span>
+                      </div>
+                    </div>
+                    <Field
+                      label="Área total de prefeitura"
+                      unit="m²"
+                      value={formatNumeroBR(agregados.areaTotalPrefeitura)}
+                      disabled
+                    />
+                    <Field
+                      label="Área privativa total"
+                      unit="m²"
+                      value={formatNumeroBR(agregados.areaPrivativaTotal)}
+                      disabled
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[13px] font-medium text-slate-500">Índice Privativa/Prefeitura</span>
+                      <div className="flex h-[38px] items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3">
+                        <Gauge size={16} className="text-blue-600" />
+                        <span className="text-[15px] font-semibold text-blue-700">
+                          {agregados.indicePrivativaPrefeitura !== null
+                            ? formatNumeroBR(agregados.indicePrivativaPrefeitura)
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Índice Privativa/Terreno = Área privativa total ÷ Área do terreno. Índice
+                    Privativa/Prefeitura = Área privativa total ÷ Área total de prefeitura (Quadro de Áreas
+                    de Prefeitura, acima). Preencha as unidades na aba "Resumo das Unidades" — os dois
+                    índices são recalculados automaticamente.
+                  </p>
                 </SectionCard>
 
                 <SectionCard
