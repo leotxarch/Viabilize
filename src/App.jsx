@@ -1585,11 +1585,75 @@ export default function EstudoViabilidadeApp() {
     // tenha escolhido "Não" antes do projeto crescer e passar a exigir a Cota de Solidariedade.
     const cotaSolidariedadeAtiva = cotaSolidariedadeObrigatoria || cotaSolidariedade === "Sim";
 
-    // (Área computável com bônus é calculada mais abaixo, após o CA com benefícios estar pronto)
+    // --- CA máximo com benefícios (movido para antes da Cota de Solidariedade: o potencial
+    // teórico por quinhão, calculado logo abaixo, precisa desse CA para existir) ---
+    // CA máximo com benefícios = CA máximo da zona x (1 + Majoração/100) — sugestão automática,
+    // mas o campo é editável e o valor digitado manualmente tem prioridade. O bônus fixo de +20%
+    // é o benefício concedido especificamente pela Cota de Solidariedade (art. 112, Lei 16.050/2014
+    // - PDE) — por isso só é sugerido automaticamente quando ela está ativa. Fora desse caso, o
+    // campo fica em 0% por padrão: outros incentivos (fruição pública, térreo ativo, outorga
+    // onerosa específica etc.) não são calculados automaticamente e devem ser digitados aqui pelo
+    // usuário, sem herdar o bônus da Cota de Solidariedade indevidamente.
+    const caMaximoZonaNum = paraNumero(caMaximoZona);
+    const majoracaoDigitada = majoracaoCA.trim() !== "";
+    const majoracaoNum = majoracaoDigitada
+      ? paraNumero(majoracaoCA)
+      : cotaSolidariedadeAtiva
+      ? 20
+      : 0;
+    const caMaximoComBeneficiosCalculado = caMaximoZonaNum > 0 ? caMaximoZonaNum * (1 + majoracaoNum / 100) : null;
+    const caMaximoComBeneficiosManualNum = paraNumero(caMaximoComBeneficiosManual);
+    const caMaximoComBeneficios =
+      caMaximoComBeneficiosManualNum > 0 ? caMaximoComBeneficiosManualNum : caMaximoComBeneficiosCalculado;
 
-    // Contrapartida necessária = 10% da Área Computável Total, calculada dinamicamente sobre a
-    // mesma variável global (recalcula sozinha sempre que a área computável do projeto mudar).
-    const contrapartidaHISNecessaria = cotaSolidariedadeAtiva ? areaComputavelTotal * 0.1 : 0;
+    // Área computável (com bônus) = Área do terreno x CA Total Resultante (potencial construtivo
+    // teórico do terreno com o bônus da Cota de Solidariedade já embutido no CA).
+    const areaComputavelComBonusCotaSolidariedade =
+      cotaSolidariedadeAtiva && terreno > 0 && caMaximoComBeneficios > 0 ? terreno * caMaximoComBeneficios : null;
+
+    // --- Potencial construtivo por uso (R2V / NR / HMP / HIS) ---
+    // O potencial construtivo real de um projeto misto com Cota de Solidariedade não é um único
+    // CA aplicado sobre o terreno inteiro: R2V e NR usam seus próprios quinhões (o terreno é
+    // dividido entre eles) e HMP/HIS são bônus adicionais (25%/50% do CA básico da zona) aplicados
+    // sobre o terreno total, somados por fora — cada trilha tem sua própria máxima e atingida.
+    const quinhaoNaoResidencialNum = paraNumero(quinhaoNaoResidencial);
+    const quinhaoResidencial =
+      areaRemanescente !== null ? Math.max(areaRemanescente - quinhaoNaoResidencialNum, 0) : null;
+
+    const caR2V = caMaximoComBeneficios;
+    const majoracaoNRNum = paraNumero(majoracaoNR);
+    const caNR = caR2V !== null ? caR2V + majoracaoNRNum : null;
+
+    // HMP/HIS só recebem o bônus de +20% quando a Cota de Solidariedade é OBRIGATÓRIA (>=20.000m²
+    // de computável); quando é apenas opcional, o bônus de 20% já foi "gasto" no CA do R2V/NR.
+    const caHMP = caMaximoZonaNum > 0 ? caMaximoZonaNum * 0.25 * (cotaSolidariedadeObrigatoria ? 1.2 : 1) : null;
+    const caHIS = caMaximoZonaNum > 0 ? caMaximoZonaNum * 0.5 * (cotaSolidariedadeObrigatoria ? 1.2 : 1) : null;
+
+    const potencialR2VMaximo =
+      quinhaoResidencial !== null && caR2V > 0 ? quinhaoResidencial * caR2V : null;
+    const potencialNRMaximo =
+      caNR !== null && caNR > 0 ? quinhaoNaoResidencialNum * caNR : null;
+    const potencialHMPAtivo = aplicarBonusHMP === "Sim";
+    const potencialHISAtivo = aplicarBonusHIS === "Sim";
+    const potencialHMPMaximo = potencialHMPAtivo && terreno > 0 && caHMP !== null ? terreno * caHMP : null;
+    const potencialHISMaximo = potencialHISAtivo && terreno > 0 && caHIS !== null ? terreno * caHIS : null;
+
+    // CA Resultante Total = soma dos CAs de todas as trilhas ativas (R2V/NR com bônus + HMP + HIS),
+    // igual à linha "CA Resultante" da planilha "Divisão por Terreno Virtual" (ex: 4,80 + 1,00 + 2,00
+    // = 7,80). Área Computável Total (potencial teórico) = soma das áreas computáveis máximas de
+    // cada trilha (quinhão x CA) — é essa soma, e não a área real já modelada nos pavimentos, que
+    // alimenta a base de cálculo da Cota de Solidariedade (10%), do Benefício NR e do Benefício
+    // empreendimento sem vagas abaixo: na planilha de referência, a Cota de Solidariedade é
+    // dimensionada a partir do potencial construtivo teórico do terreno (zoneamento x quinhões),
+    // não a partir do que já foi desenhado pavimento a pavimento.
+    const caResultanteTotal =
+      (caR2V || 0) + (potencialHMPAtivo && caHMP !== null ? caHMP : 0) + (potencialHISAtivo && caHIS !== null ? caHIS : 0);
+    const potencialTeoricoTotal =
+      (potencialR2VMaximo || 0) + (potencialNRMaximo || 0) + (potencialHMPMaximo || 0) + (potencialHISMaximo || 0);
+
+    // Contrapartida necessária = 10% da Área Computável Total (potencial teórico dos quinhões, ver
+    // nota acima) — recalcula sozinha sempre que o terreno, os quinhões ou o CA mudarem.
+    const contrapartidaHISNecessaria = cotaSolidariedadeAtiva ? potencialTeoricoTotal * 0.1 : 0;
 
     // Benefícios não computáveis do quadro "Divisão por Terreno Virtual" — mesma planilha de
     // referência (LUNI/AIMBERÊ): dois incentivos adicionais que acompanham a Cota de Solidariedade,
@@ -1598,8 +1662,8 @@ export default function EstudoViabilidadeApp() {
     // "Benefício empreendimento sem vagas" = 10% da computável total — pode ser usado para
     // circulação não computável (é um teto de referência, não é lançado automaticamente em nenhum
     // campo — o usuário aloca a área de circulação normalmente no Pavimento, dentro desse limite).
-    const beneficioNR = cotaSolidariedadeAtiva ? areaComputavelTotal * 0.2 : 0;
-    const beneficioEmpreendimentoSemVagas = cotaSolidariedadeAtiva ? areaComputavelTotal * 0.1 : 0;
+    const beneficioNR = cotaSolidariedadeAtiva ? potencialTeoricoTotal * 0.2 : 0;
+    const beneficioEmpreendimentoSemVagas = cotaSolidariedadeAtiva ? potencialTeoricoTotal * 0.1 : 0;
 
     // Verifica se a unidade está marcada como HIS ou HMP pelo campo "Categoria" (funciona não
     // importa em qual tabela/categoria de tabela ela foi cadastrada — Resumo das Unidades, HIS e
@@ -1715,7 +1779,7 @@ export default function EstudoViabilidadeApp() {
     const caUtilizado = terreno > 0 ? areaComputavelTotal / terreno : null;
 
     // Nº mínimo de unidades = arredondar para cima (Área Computável Residencial ÷ (CA máximo da zona × Cota-parte máxima))
-    const caMaximoZonaNum = paraNumero(caMaximoZona);
+    // (caMaximoZonaNum já foi calculado acima, antes da Cota de Solidariedade)
     const cotaParteMaximaNum = paraNumero(cotaParteMaxima);
     const nMinimoUnidades =
       cotaParteMaximaNum > 0 && caMaximoZonaNum > 0
@@ -1729,55 +1793,8 @@ export default function EstudoViabilidadeApp() {
         ? Math.floor(areaComputavelTotal / (caMaximoZonaNum * cotaParteMinimaNum))
         : null;
 
-    // CA máximo com benefícios = CA máximo da zona x (1 + Majoração/100) — sugestão automática,
-    // mas o campo é editável e o valor digitado manualmente tem prioridade. O bônus fixo de +20%
-    // é o benefício concedido especificamente pela Cota de Solidariedade (art. 112, Lei 16.050/2014
-    // - PDE) — por isso só é sugerido automaticamente quando ela está ativa. Fora desse caso, o
-    // campo fica em 0% por padrão: outros incentivos (fruição pública, térreo ativo, outorga
-    // onerosa específica etc.) não são calculados automaticamente e devem ser digitados aqui pelo
-    // usuário, sem herdar o bônus da Cota de Solidariedade indevidamente.
-    const majoracaoDigitada = majoracaoCA.trim() !== "";
-    const majoracaoNum = majoracaoDigitada
-      ? paraNumero(majoracaoCA)
-      : cotaSolidariedadeAtiva
-      ? 20
-      : 0;
-    const caMaximoComBeneficiosCalculado = caMaximoZonaNum > 0 ? caMaximoZonaNum * (1 + majoracaoNum / 100) : null;
-    const caMaximoComBeneficiosManualNum = paraNumero(caMaximoComBeneficiosManual);
-    const caMaximoComBeneficios =
-      caMaximoComBeneficiosManualNum > 0 ? caMaximoComBeneficiosManualNum : caMaximoComBeneficiosCalculado;
-
-    // Área computável (com bônus) = Área do terreno x CA Total Resultante (potencial construtivo
-    // teórico do terreno com o bônus da Cota de Solidariedade já embutido no CA).
-    const areaComputavelComBonusCotaSolidariedade =
-      cotaSolidariedadeAtiva && terreno > 0 && caMaximoComBeneficios > 0 ? terreno * caMaximoComBeneficios : null;
-
-    // --- Potencial construtivo por uso (R2V / NR / HMP / HIS) ---
-    // O potencial construtivo real de um projeto misto com Cota de Solidariedade não é um único
-    // CA aplicado sobre o terreno inteiro: R2V e NR usam seus próprios quinhões (o terreno é
-    // dividido entre eles) e HMP/HIS são bônus adicionais (25%/50% do CA básico da zona) aplicados
-    // sobre o terreno total, somados por fora — cada trilha tem sua própria máxima e atingida.
-    const quinhaoNaoResidencialNum = paraNumero(quinhaoNaoResidencial);
-    const quinhaoResidencial =
-      areaRemanescente !== null ? Math.max(areaRemanescente - quinhaoNaoResidencialNum, 0) : null;
-
-    const caR2V = caMaximoComBeneficios;
-    const majoracaoNRNum = paraNumero(majoracaoNR);
-    const caNR = caR2V !== null ? caR2V + majoracaoNRNum : null;
-
-    // HMP/HIS só recebem o bônus de +20% quando a Cota de Solidariedade é OBRIGATÓRIA (>=20.000m²
-    // de computável); quando é apenas opcional, o bônus de 20% já foi "gasto" no CA do R2V/NR.
-    const caHMP = caMaximoZonaNum > 0 ? caMaximoZonaNum * 0.25 * (cotaSolidariedadeObrigatoria ? 1.2 : 1) : null;
-    const caHIS = caMaximoZonaNum > 0 ? caMaximoZonaNum * 0.5 * (cotaSolidariedadeObrigatoria ? 1.2 : 1) : null;
-
-    const potencialR2VMaximo =
-      quinhaoResidencial !== null && caR2V > 0 ? quinhaoResidencial * caR2V : null;
-    const potencialNRMaximo =
-      caNR !== null && caNR > 0 ? quinhaoNaoResidencialNum * caNR : null;
-    const potencialHMPAtivo = aplicarBonusHMP === "Sim";
-    const potencialHISAtivo = aplicarBonusHIS === "Sim";
-    const potencialHMPMaximo = potencialHMPAtivo && terreno > 0 && caHMP !== null ? terreno * caHMP : null;
-    const potencialHISMaximo = potencialHISAtivo && terreno > 0 && caHIS !== null ? terreno * caHIS : null;
+    // (CA máximo com benefícios, Área computável com bônus e Potencial construtivo por uso —
+    // R2V/NR/HMP/HIS — já foram calculados acima, antes da Cota de Solidariedade.)
 
     // Atingida por quinhão: soma a área computável já alocada nos pavimentos, separada pela
     // categoria de uso (Residencial = quinhão residencial; categorias computáveis personalizadas
@@ -1924,6 +1941,8 @@ export default function EstudoViabilidadeApp() {
       caMaximoComBeneficios,
       caMaximoComBeneficiosCalculado,
       areaComputavelComBonusCotaSolidariedade,
+      caResultanteTotal,
+      potencialTeoricoTotal,
       cotaSolidariedadeObrigatoria,
       cotaSolidariedadeAtiva,
       contrapartidaHISNecessaria,
@@ -2646,13 +2665,13 @@ export default function EstudoViabilidadeApp() {
                           <p className="text-[15px] font-semibold text-slate-800">+20%</p>
                         </div>
                         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                          <p className="text-[11px] text-blue-600">CA total resultante</p>
+                          <p className="text-[11px] text-blue-600">CA resultante — R2V/NR</p>
                           <p className="text-[15px] font-semibold text-blue-700">
                             {formatNumeroBR(agregados.caMaximoComBeneficios)}
                           </p>
                         </div>
                         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                          <p className="text-[11px] text-blue-600">Área computável (com bônus)</p>
+                          <p className="text-[11px] text-blue-600">Área computável (com bônus) — R2V/NR</p>
                           <p className="text-[15px] font-semibold text-blue-700">
                             {agregados.areaComputavelComBonusCotaSolidariedade !== null
                               ? formatNumeroBR(agregados.areaComputavelComBonusCotaSolidariedade)
@@ -2660,11 +2679,33 @@ export default function EstudoViabilidadeApp() {
                             m²
                           </p>
                         </div>
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                          <p className="text-[11px] text-emerald-600">
+                            CA Resultante Total (R2V/NR + HMP + HIS)
+                          </p>
+                          <p className="text-[15px] font-semibold text-emerald-700">
+                            {formatNumeroBR(agregados.caResultanteTotal)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                          <p className="text-[11px] text-emerald-600">
+                            Área Computável Total (potencial teórico)
+                          </p>
+                          <p className="text-[15px] font-semibold text-emerald-700">
+                            {formatNumeroBR(agregados.potencialTeoricoTotal)} m²
+                          </p>
+                        </div>
                       </div>
                       <p className="mt-2 text-[11px] text-slate-400">
-                        Área computável (com bônus) = Área do terreno × CA total resultante — o potencial
-                        construtivo teórico permitido pela zona já com o bônus. Para referência, a Área
-                        Computável Total real do projeto (soma efetiva de blocos, unidades e estacionamento,
+                        <strong>CA resultante — R2V/NR</strong> e <strong>Área computável (com bônus) — R2V/NR</strong>{" "}
+                        = CA básico da zona × 1,2 aplicado sobre o terreno inteiro, ignorando a divisão em
+                        quinhões (referência rápida, igual ao "CA máximo com benefícios" da seção Parâmetros da
+                        zona). <strong>CA Resultante Total</strong> e <strong>Área Computável Total (potencial
+                        teórico)</strong> somam as 4 trilhas do quadro "Potencial Construtivo por Uso" abaixo
+                        (R2V + NR sobre seus quinhões, HMP + HIS sobre o terreno total) — são esses dois valores,
+                        e não os de cima, que alimentam a Contrapartida HIS, o Benefício NR e o Benefício
+                        empreendimento sem vagas (10% / 20% / 10% da Área Computável Total). Para referência, a
+                        área computável real do projeto (soma efetiva de blocos, unidades e estacionamento,
                         igual à do "Resumo do empreendimento") está em{" "}
                         <strong>{formatNumeroBR(agregados.areaComputavelTotal)} m²</strong>. O bônus de 20% é
                         aplicado automaticamente no campo "Majoração CA" (seção Parâmetros da zona, acima) —
