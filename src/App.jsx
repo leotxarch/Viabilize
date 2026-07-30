@@ -1395,17 +1395,6 @@ export default function EstudoViabilidadeApp() {
     const limiteTerracoPorPavimento =
       areaRemanescente !== null && areaRemanescente > 0 ? areaRemanescente * 0.05 : null;
 
-    // Verifica se a unidade está marcada como HIS ou HMP pelo campo "Categoria" (funciona não
-    // importa em qual tabela/categoria de tabela ela foi cadastrada — Resumo das Unidades, HIS e
-    // HMP, ou qualquer categoria personalizada — e também via "Outro" com o texto "HIS"/"HMP").
-    const unidadeEhCategoria = (ref, alvo) => {
-      if (!ref) return false;
-      const normalizar = (v) => (v || "").toString().trim().toUpperCase();
-      if (normalizar(ref.categoria) === alvo) return true;
-      if (normalizar(ref.categoria) === "OUTRO" && normalizar(ref.categoriaOutro) === alvo) return true;
-      return false;
-    };
-
     // Cada linha do Resumo das Unidades define os dados POR UNIDADE (não multiplicados).
     // Privativa por unidade = Computável + Incentivo + Terraço + Á.Técnica + Ornamento + Descoberta + Depósito
     const calcularLinha = (u, categoriaInfo) => {
@@ -1477,16 +1466,9 @@ export default function EstudoViabilidadeApp() {
         const ornamentoUnit = ref ? ref.ornamentoUnidade : 0;
         const descobertaUnit = ref ? ref.descobertaUnidade : 0;
         const depositoUnit = ref ? ref.depositoUnidade : 0;
-        // Unidade marcada como HIS/HMP (campo "Categoria") é incentivo/bônus — não conta na área
-        // computável BASE do projeto (Quadro de Áreas de Prefeitura, índices, CA utilizado), mesmo
-        // quando cadastrada numa tabela computável comum (ex: "Residencial"). Ela só consome a
-        // trilha de bônus HMP/HIS (ver somarTrilhaBonus, mais abaixo), que mede pela mesma
-        // computavelItem "crua" — por isso o campo cru continua existindo, só a soma da laje exclui.
-        const ehIncentivoHisHmp = unidadeEhCategoria(ref, "HIS") || unidadeEhCategoria(ref, "HMP");
         return {
           ...it,
           qtd,
-          ehIncentivoHisHmp,
           privativaItem: privativaUnit * qtd,
           vagasItem: vagasUnit * qtd,
           computavelItem: computavelUnit * qtd,
@@ -1502,10 +1484,7 @@ export default function EstudoViabilidadeApp() {
       });
       const privativaLaje = itens.reduce((acc, it) => acc + it.privativaItem, 0);
       const vagasLaje = itens.reduce((acc, it) => acc + it.vagasItem, 0);
-      const computavelDasUnidadesLaje = itens.reduce(
-        (acc, it) => acc + (it.ehIncentivoHisHmp ? 0 : it.computavelItem),
-        0
-      );
+      const computavelDasUnidadesLaje = itens.reduce((acc, it) => acc + it.computavelItem, 0);
       const hallPrivativoLaje = itens.reduce((acc, it) => acc + it.hallPrivativoItem, 0);
       const incentivoNaoComputavelDasUnidadesLaje = itens.reduce((acc, it) => acc + it.incentivoNaoComputavelItem, 0);
       const incentivoDasUnidadesLaje = itens.reduce((acc, it) => acc + it.incentivoItem, 0);
@@ -1904,6 +1883,17 @@ export default function EstudoViabilidadeApp() {
     // campo — o usuário aloca a área de circulação normalmente no Pavimento, dentro desse limite).
     const beneficioNR = cotaSolidariedadeAtiva ? potencialTeoricoTotal * 0.2 : 0;
     const beneficioEmpreendimentoSemVagas = cotaSolidariedadeAtiva ? potencialTeoricoTotal * 0.1 : 0;
+
+    // Verifica se a unidade está marcada como HIS ou HMP pelo campo "Categoria" (funciona não
+    // importa em qual tabela/categoria de tabela ela foi cadastrada — Resumo das Unidades, HIS e
+    // HMP, ou qualquer categoria personalizada — e também via "Outro" com o texto "HIS"/"HMP").
+    const unidadeEhCategoria = (ref, alvo) => {
+      if (!ref) return false;
+      const normalizar = (v) => (v || "").toString().trim().toUpperCase();
+      if (normalizar(ref.categoria) === alvo) return true;
+      if (normalizar(ref.categoria) === "OUTRO" && normalizar(ref.categoriaOutro) === alvo) return true;
+      return false;
+    };
 
     // Soma a área privativa (construída) das unidades marcadas como HIS/HMP já alocadas nos
     // pavimentos, opcionalmente filtrando por uma categoria específica ("HIS" ou "HMP"). Usa a
