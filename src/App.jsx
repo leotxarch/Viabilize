@@ -2081,14 +2081,20 @@ export default function EstudoViabilidadeApp() {
 
     const potencialPorUso = [
       { uso: "R2V (Residencial)", ca: caR2V, base: "Quinhão residencial", maximo: potencialR2VMaximo, atingida: potencialR2VAtingida, falta: potencialR2VFalta },
-      {
-        uso: nomeUsoNR.trim() ? `NR Computável (${nomeUsoNR.trim()})` : "NR (Não Residencial)",
-        ca: caNR,
-        base: "Quinhão não residencial",
-        maximo: potencialNRMaximo,
-        atingida: potencialNRAtingida,
-        falta: potencialNRFalta,
-      },
+      // Linha NR só aparece quando o projeto realmente tem uso Não Residencial ativo — sem isso,
+      // o quinhão NR é sempre 0 e a linha só mostrava traços/zeros à toa na tabela.
+      ...(usoNaoResidencialAtivo === "Sim"
+        ? [
+            {
+              uso: nomeUsoNR.trim() ? `NR Computável (${nomeUsoNR.trim()})` : "NR (Não Residencial)",
+              ca: caNR,
+              base: "Quinhão não residencial",
+              maximo: potencialNRMaximo,
+              atingida: potencialNRAtingida,
+              falta: potencialNRFalta,
+            },
+          ]
+        : []),
       { uso: "HMP (bônus)", ca: potencialHMPAtivo ? caHMP : null, base: "Terreno total", maximo: potencialHMPMaximo, atingida: potencialHMPAtivo ? potencialHMPAtingida : null, falta: potencialHMPFalta },
       { uso: "HIS (bônus)", ca: potencialHISAtivo ? caHIS : null, base: "Terreno total", maximo: potencialHISMaximo, atingida: potencialHISAtivo ? potencialHISAtingida : null, falta: potencialHISFalta },
     ];
@@ -2296,7 +2302,7 @@ export default function EstudoViabilidadeApp() {
         }
       `}</style>
       {/* Top bar */}
-      <header className="no-print flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <header className="no-print sticky top-0 z-30 flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
             <FileText size={18} className="text-white" />
@@ -2425,28 +2431,26 @@ export default function EstudoViabilidadeApp() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8">
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">
           <div className="mx-auto max-w-5xl flex flex-col gap-6">
-            {/* Seções do estudo — fixa (sticky) no topo do conteúdo enquanto rola a página */}
-            <div className="no-print sticky top-0 z-10 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
+            {/* Seções do estudo — fixa (sticky) logo abaixo do cabeçalho enquanto rola a página */}
+            <div className="no-print sticky top-[159px] z-20 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm sm:top-[70px]">
               <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">
                 Seções do estudo
               </p>
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex gap-1 overflow-x-auto">
                 {TABS.map((tab) => {
-                  const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm ${
+                      className={`w-[84px] shrink-0 rounded-lg px-1.5 py-1.5 text-center text-[10.5px] leading-tight sm:w-[100px] sm:text-[11.5px] ${
                         isActive
                           ? "bg-blue-600 text-white"
                           : "bg-white text-slate-500 border border-slate-200"
                       }`}
                     >
-                      <Icon size={15} className={isActive ? "text-white" : "text-slate-400"} />
                       {tab.label}
                     </button>
                   );
