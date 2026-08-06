@@ -1,12 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import {
-  FileText,
-  Plus,
-  Trash2,
-  ChevronRight,
-  Gauge,
-  AlertTriangle,
-} from "lucide-react";
+import { Plus, Trash2, ChevronRight, Gauge, AlertTriangle } from "lucide-react";
 
 // Chave do autosave no localStorage — muda o número da versão se o formato salvo mudar de forma
 // incompatível no futuro (evita tentar restaurar dados salvos com um formato antigo/quebrado).
@@ -306,7 +299,9 @@ function Field({
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           data-nav-input="true"
-          className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400"
+          className={`w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 ${
+            ehNumerico ? "font-mono" : ""
+          }`}
           {...props}
         />
         {unit && (
@@ -386,9 +381,9 @@ function MetricCard({ label, value, unit, highlight, reference }) {
       <p className={`text-[12px] font-medium ${highlight ? "text-blue-600" : "text-slate-400"}`}>
         {label}
       </p>
-      <p className={`mt-1 text-[22px] font-semibold ${highlight ? "text-blue-700" : "text-slate-800"}`}>
+      <p className={`mt-1 font-mono text-[22px] font-semibold ${highlight ? "text-blue-700" : "text-slate-800"}`}>
         {value}
-        {unit && <span className="ml-1 text-[13px] font-medium text-slate-400">{unit}</span>}
+        {unit && <span className="ml-1 font-sans text-[13px] font-medium text-slate-400">{unit}</span>}
       </p>
       {reference && <p className="mt-0.5 text-[12px] text-slate-400">{reference}</p>}
     </div>
@@ -396,7 +391,7 @@ function MetricCard({ label, value, unit, highlight, reference }) {
 }
 
 // Par rótulo/valor compacto (sem borda), usado nas tabelas de relatório de Indicadores Gerais.
-function Kv({ label, value, tone }) {
+function Kv({ label, value, tone, texto }) {
   const vazio = value === null || value === undefined || value === "";
   const cor = vazio
     ? "text-slate-300"
@@ -408,7 +403,22 @@ function Kv({ label, value, tone }) {
   return (
     <div className="flex flex-col gap-0.5">
       <p className="text-[10.5px] text-slate-400">{label}</p>
-      <p className={`text-[13px] font-semibold ${cor}`}>{vazio ? "—" : value}</p>
+      <p className={`text-[13px] font-semibold ${texto ? "" : "font-mono"} ${cor}`}>{vazio ? "—" : value}</p>
+    </div>
+  );
+}
+
+// Campo editável compacto da faixa de identificação do estudo (sem borda, rótulo accent).
+function IdField({ label, value, onChange, placeholder }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10.5px] font-bold uppercase tracking-wide text-blue-600">{label}</span>
+      <input
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="min-w-[120px] bg-transparent text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none"
+      />
     </div>
   );
 }
@@ -434,7 +444,7 @@ function TableInput({ value, onChange, placeholder, width = "w-20", disabled, fo
   };
   return (
     <input
-      className={`${width} rounded-md border px-2 py-1.5 text-sm ${
+      className={`${width} rounded-md border px-2 py-1.5 text-sm ${ehNumerico ? "font-mono" : ""} ${
         disabled ? "border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 text-slate-800"
       }`}
       value={value}
@@ -718,13 +728,14 @@ function TabelaUnidades({
                   />
                 </td>
                 <td className="py-1.5 pr-3">
-                  <TableInput value={formatNumeroBR(u.privativaUnidade)} disabled />
+                  <TableInput value={formatNumeroBR(u.privativaUnidade)} numerico disabled />
                 </td>
                 <td className="py-1.5 pr-3">
                   <TableInput
                     value={
                       u.percentualTerracoPrivativa !== null ? formatNumeroBR(u.percentualTerracoPrivativa) : "—"
                     }
+                    numerico
                     disabled
                   />
                 </td>
@@ -2463,16 +2474,17 @@ export default function EstudoViabilidadeApp() {
       `}</style>
       {/* Top bar */}
       <header className="no-print sticky top-0 z-30 flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
-            <FileText size={18} className="text-white" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <svg viewBox="0 0 64 64" width="28" height="28" className="shrink-0">
+            <rect x="10" y="10" width="44" height="44" fill="none" stroke="#239181" strokeWidth="6" />
+            <rect x="22" y="22" width="20" height="20" fill="#239181" />
+          </svg>
           <div className="min-w-0">
-            <h1 className="truncate text-[15px] font-semibold text-slate-800 leading-tight">
-              Viabilize (Beta)
+            <h1 className="truncate text-[19px] font-extrabold tracking-tight text-slate-800 leading-tight">
+              Viabilize
             </h1>
-            <p className="truncate text-[12px] text-slate-400 leading-tight">
-              São Paulo · Formulário + indicadores automáticos
+            <p className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-400 leading-tight">
+              Estudo de Viabilidade Arquitetônica
             </p>
           </div>
         </div>
@@ -2546,55 +2558,49 @@ export default function EstudoViabilidadeApp() {
         </div>
       )}
 
-      <div className="flex">
-        {/* Sidebar: Identificação do estudo — fixa (sticky) enquanto rola a página */}
-        <aside className="no-print hidden w-64 shrink-0 border-r border-slate-200 bg-white px-4 py-6 md:block">
-          <div className="sticky top-6">
-            <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              Identificação do estudo
-            </p>
-            <div className="flex flex-col gap-3 px-2">
-              <Field
-                label="Cliente"
-                placeholder="Nome do cliente"
-                value={cliente}
-                onChange={(e) => setCliente(e.target.value)}
-              />
-              <Field
-                label="Nome do projeto"
-                placeholder="Ex: Residencial Jardins"
-                value={nomeProjeto}
-                onChange={(e) => setNomeProjeto(e.target.value)}
-              />
-              <Field
-                label="Arquiteto responsável"
-                placeholder="Nome"
-                value={arquitetoResponsavel}
-                onChange={(e) => setArquitetoResponsavel(e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Field
-                  label="Opção"
-                  placeholder="01"
-                  value={opcaoEstudo}
-                  onChange={(e) => setOpcaoEstudo(e.target.value)}
-                />
-                <Field
-                  label="Revisão"
-                  placeholder="R0"
-                  value={revisaoEstudo}
-                  onChange={(e) => setRevisaoEstudo(e.target.value)}
-                />
-              </div>
-            </div>
+      {/* Faixa de identificação do estudo — horizontal, fixa (sticky) logo abaixo do cabeçalho */}
+      <div className="no-print sticky top-[161px] z-20 flex flex-wrap gap-x-8 gap-y-2 border-b border-slate-200 bg-blue-50 px-4 py-3 sm:top-[71px] sm:px-8">
+        <IdField label="Cliente" placeholder="Nome do cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} />
+        <IdField
+          label="Projeto"
+          placeholder="Ex: Residencial Jardins"
+          value={nomeProjeto}
+          onChange={(e) => setNomeProjeto(e.target.value)}
+        />
+        <IdField
+          label="Arquiteto responsável"
+          placeholder="Nome"
+          value={arquitetoResponsavel}
+          onChange={(e) => setArquitetoResponsavel(e.target.value)}
+        />
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10.5px] font-bold uppercase tracking-wide text-blue-600">
+            Opção / Revisão
+          </span>
+          <div className="flex items-center gap-1">
+            <input
+              value={opcaoEstudo}
+              onChange={(e) => setOpcaoEstudo(e.target.value)}
+              placeholder="01"
+              className="w-10 bg-transparent text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none"
+            />
+            <span className="text-[14px] font-semibold text-slate-300">/</span>
+            <input
+              value={revisaoEstudo}
+              onChange={(e) => setRevisaoEstudo(e.target.value)}
+              placeholder="R0"
+              className="w-10 bg-transparent text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none"
+            />
           </div>
-        </aside>
+        </div>
+      </div>
 
+      <div className="flex">
         {/* Main content */}
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">
           <div className="mx-auto max-w-5xl flex flex-col gap-6">
             {/* Seções do estudo — fixa (sticky) logo abaixo do cabeçalho enquanto rola a página */}
-            <div className="no-print sticky top-[159px] z-20 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm sm:top-[70px]">
+            <div className="no-print sticky top-[318px] z-20 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm sm:top-[135px]">
               <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 md:hidden">
                 Seções do estudo
               </p>
@@ -3498,16 +3504,16 @@ export default function EstudoViabilidadeApp() {
                         {agregados.potencialPorUso.map((linha) => (
                           <tr key={linha.uso} className="border-b border-slate-100">
                             <td className="py-2 pr-3 font-medium text-slate-700">{linha.uso}</td>
-                            <td className="py-2 pr-3">{linha.ca !== null ? formatNumeroBR(linha.ca) : "—"}</td>
+                            <td className="py-2 pr-3 font-mono">{linha.ca !== null ? formatNumeroBR(linha.ca) : "—"}</td>
                             <td className="py-2 pr-3 text-slate-500">{linha.base}</td>
-                            <td className="py-2 pr-3">
+                            <td className="py-2 pr-3 font-mono">
                               {linha.maximo !== null ? `${formatNumeroBR(linha.maximo)} m²` : "—"}
                             </td>
-                            <td className="py-2 pr-3">
+                            <td className="py-2 pr-3 font-mono">
                               {linha.atingida !== null ? `${formatNumeroBR(linha.atingida)} m²` : "—"}
                             </td>
                             <td
-                              className={`py-2 font-semibold ${
+                              className={`py-2 font-mono font-semibold ${
                                 linha.falta === null
                                   ? "text-slate-400"
                                   : linha.falta < 0
@@ -3523,13 +3529,15 @@ export default function EstudoViabilidadeApp() {
                           <td className="py-2 pr-3" colSpan={3}>
                             Total
                           </td>
-                          <td className="py-2 pr-3">{formatNumeroBR(agregados.computavelMaximoPermitido)} m²</td>
-                          <td className="py-2 pr-3">
+                          <td className="py-2 pr-3 font-mono">{formatNumeroBR(agregados.computavelMaximoPermitido)} m²</td>
+                          <td className="py-2 pr-3 font-mono">
                             {formatNumeroBR(agregados.totalAtingidaPotencialPorUso)} m²
                           </td>
                           <td
                             className={
-                              agregados.totalFaltaPotencialPorUso < 0 ? "py-2 text-red-600" : "py-2 text-emerald-600"
+                              agregados.totalFaltaPotencialPorUso < 0
+                                ? "py-2 font-mono text-red-600"
+                                : "py-2 font-mono text-emerald-600"
                             }
                           >
                             {formatNumeroBR(agregados.totalFaltaPotencialPorUso)} m²
@@ -4935,8 +4943,8 @@ export default function EstudoViabilidadeApp() {
 
                 <SectionCard title="Identificação" subtitle="Dados do estudo">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
-                    <Kv label="Cliente" value={cliente.trim()} />
-                    <Kv label="Nome do projeto" value={nomeProjeto.trim()} />
+                    <Kv texto label="Cliente" value={cliente.trim()} />
+                    <Kv texto label="Nome do projeto" value={nomeProjeto.trim()} />
                     <Kv
                       label="Opção / Revisão"
                       value={
@@ -4945,17 +4953,17 @@ export default function EstudoViabilidadeApp() {
                           : null
                       }
                     />
-                    <Kv label="Arquiteto responsável" value={arquitetoResponsavel.trim()} />
+                    <Kv texto label="Arquiteto responsável" value={arquitetoResponsavel.trim()} />
                     <Kv label="Data" value={new Date().toLocaleDateString("pt-BR")} />
                   </div>
                 </SectionCard>
 
                 <SectionCard title="Terreno" subtitle="Local, zoneamento e parâmetros urbanísticos">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
-                    <Kv label="Local" value={localEndereco.trim()} />
-                    <Kv label="Município" value={municipio.trim()} />
-                    <Kv label="Subprefeitura" value={subprefeitura} />
-                    <Kv label="Subdistrito" value={subdistrito} />
+                    <Kv texto label="Local" value={localEndereco.trim()} />
+                    <Kv texto label="Município" value={municipio.trim()} />
+                    <Kv texto label="Subprefeitura" value={subprefeitura} />
+                    <Kv texto label="Subdistrito" value={subdistrito} />
                     <Kv label="Área do terreno" value={`${formatNumeroBR(paraNumero(areaTerreno))} m²`} />
                     <Kv label="Reserva de calçada" value={`${formatNumeroBR(paraNumero(reservaCalcada))} m²`} />
                     <Kv label="Doação" value={paraNumero(doacao) > 0 ? `${formatNumeroBR(paraNumero(doacao))} m²` : null} />
@@ -4971,7 +4979,7 @@ export default function EstudoViabilidadeApp() {
                       label="Quinhão não residencial"
                       value={paraNumero(quinhaoNaoResidencial) > 0 ? `${formatNumeroBR(paraNumero(quinhaoNaoResidencial))} m²` : null}
                     />
-                    <Kv label="Zoneamento" value={zona} />
+                    <Kv texto label="Zoneamento" value={zona} />
                     <Kv label="CA básico da zona" value={caBasicoZona ? formatNumeroBR(paraNumero(caBasicoZona)) : null} />
                     <Kv
                       label="CA máximo da zona (Quadro 3)"
@@ -5022,8 +5030,8 @@ export default function EstudoViabilidadeApp() {
 
                 <SectionCard title="Resumo do empreendimento" subtitle="CA e TO efetivamente utilizados pelo projeto">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
-                    <Kv label="Uso" value="RESIDENCIAL" />
-                    <Kv label="Categoria de uso" value="R2V" />
+                    <Kv texto label="Uso" value="RESIDENCIAL" />
+                    <Kv texto label="Categoria de uso" value="R2V" />
                     <Kv label="CA total utilizado" value={agregados.caUtilizado !== null ? formatNumeroBR(agregados.caUtilizado) : null} />
                     <Kv label="TO utilizada" value={null} />
                     <Kv label="Total de blocos" value={agregados.totalBlocosGeral > 0 ? formatNumeroBR(agregados.totalBlocosGeral) : null} />
@@ -5109,9 +5117,9 @@ export default function EstudoViabilidadeApp() {
                         {agregados.potencialPorUso.map((linha) => (
                           <tr key={linha.uso} className="border-b border-slate-100">
                             <td className="py-1.5 pr-3 font-medium text-slate-700">{linha.uso}</td>
-                            <td className="py-1.5 pr-3">{linha.ca !== null ? formatNumeroBR(linha.ca) : "—"}</td>
-                            <td className="py-1.5 pr-3">{linha.maximo !== null ? `${formatNumeroBR(linha.maximo)} m²` : "—"}</td>
-                            <td className="py-1.5">{linha.atingida !== null ? `${formatNumeroBR(linha.atingida)} m²` : "—"}</td>
+                            <td className="py-1.5 pr-3 font-mono">{linha.ca !== null ? formatNumeroBR(linha.ca) : "—"}</td>
+                            <td className="py-1.5 pr-3 font-mono">{linha.maximo !== null ? `${formatNumeroBR(linha.maximo)} m²` : "—"}</td>
+                            <td className="py-1.5 font-mono">{linha.atingida !== null ? `${formatNumeroBR(linha.atingida)} m²` : "—"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -5132,29 +5140,29 @@ export default function EstudoViabilidadeApp() {
                       <tbody>
                         <tr className="border-b border-slate-100">
                           <td className="py-1.5 pr-3 font-medium text-slate-700">Fachada Ativa</td>
-                          <td className="py-1.5 pr-3">—</td>
-                          <td className="py-1.5">{formatNumeroBR(agregados.areaFachadaAtivaAlocada)} m²</td>
+                          <td className="py-1.5 pr-3 font-mono">—</td>
+                          <td className="py-1.5 font-mono">{formatNumeroBR(agregados.areaFachadaAtivaAlocada)} m²</td>
                         </tr>
                         <tr className="border-b border-slate-100">
                           <td className="py-1.5 pr-3 font-medium text-slate-700">NR Incentivo</td>
-                          <td className="py-1.5 pr-3">{agregados.beneficioNR > 0 ? `${formatNumeroBR(agregados.beneficioNR)} m²` : "—"}</td>
-                          <td className="py-1.5">—</td>
+                          <td className="py-1.5 pr-3 font-mono">{agregados.beneficioNR > 0 ? `${formatNumeroBR(agregados.beneficioNR)} m²` : "—"}</td>
+                          <td className="py-1.5 font-mono">—</td>
                         </tr>
                         <tr className="border-b border-slate-100">
                           <td className="py-1.5 pr-3 font-medium text-slate-700">HIS Cota Solid. (mínima)</td>
-                          <td className="py-1.5 pr-3">
+                          <td className="py-1.5 pr-3 font-mono">
                             {agregados.contrapartidaHISNecessaria > 0 ? `${formatNumeroBR(agregados.contrapartidaHISNecessaria)} m²` : "—"}
                           </td>
-                          <td className="py-1.5">
+                          <td className="py-1.5 font-mono">
                             {agregados.contrapartidaHISNecessaria > 0 ? `${formatNumeroBR(agregados.contrapartidaHISAlocada)} m²` : "—"}
                           </td>
                         </tr>
                         <tr>
                           <td className="py-1.5 pr-3 font-medium text-slate-700">Benefício Residencial sem Vagas</td>
-                          <td className="py-1.5 pr-3">
+                          <td className="py-1.5 pr-3 font-mono">
                             {agregados.potencialSemVagasMaximo > 0 ? `${formatNumeroBR(agregados.potencialSemVagasMaximo)} m²` : "—"}
                           </td>
-                          <td className="py-1.5">—</td>
+                          <td className="py-1.5 font-mono">—</td>
                         </tr>
                       </tbody>
                     </table>
@@ -5190,11 +5198,11 @@ export default function EstudoViabilidadeApp() {
                               <td className="py-1.5 pr-3 font-medium text-slate-700">{bloco.nomeExibicao}</td>
                               <td className="py-1.5 pr-3">{bloco.uso || "—"}</td>
                               <td className="py-1.5 pr-3">{tipologias.size ? Array.from(tipologias).join(" / ") : "—"}</td>
-                              <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalUnidadesBloco / bloco.multiplicadorBlocos)}</td>
-                              <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalUnidadesBloco)}</td>
-                              <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalPrivativaLajesBloco / bloco.multiplicadorBlocos)}</td>
-                              <td className="py-1.5 pr-3 font-medium text-blue-700">{formatNumeroBR(bloco.totalPrivativaLajesBloco)}</td>
-                              <td className="py-1.5">{formatNumeroBR(bloco.totalPavimentosSemAticoBloco)}</td>
+                              <td className="py-1.5 pr-3 font-mono">{formatNumeroBR(bloco.totalUnidadesBloco / bloco.multiplicadorBlocos)}</td>
+                              <td className="py-1.5 pr-3 font-mono">{formatNumeroBR(bloco.totalUnidadesBloco)}</td>
+                              <td className="py-1.5 pr-3 font-mono">{formatNumeroBR(bloco.totalPrivativaLajesBloco / bloco.multiplicadorBlocos)}</td>
+                              <td className="py-1.5 pr-3 font-mono font-medium text-blue-700">{formatNumeroBR(bloco.totalPrivativaLajesBloco)}</td>
+                              <td className="py-1.5 font-mono">{formatNumeroBR(bloco.totalPavimentosSemAticoBloco)}</td>
                             </tr>
                           );
                         })}
@@ -5239,14 +5247,14 @@ export default function EstudoViabilidadeApp() {
                         ).map((linha) => (
                           <tr key={linha.descricao} className="border-b border-slate-100">
                             <td className="py-1.5 pr-3 font-medium text-slate-700">{linha.descricao}</td>
-                            <td className="py-1.5 pr-3">
+                            <td className="py-1.5 pr-3 font-mono">
                               {linha.quantidade > 0 ? formatNumeroBR(linha.privativa / linha.quantidade) : "—"} m²
                             </td>
-                            <td className="py-1.5 pr-3">
+                            <td className="py-1.5 pr-3 font-mono">
                               {linha.quantidade > 0 && linha.vagas > 0 ? formatNumeroBR(linha.vagas / linha.quantidade) : "—"}
                             </td>
-                            <td className="py-1.5 pr-3">{formatNumeroBR(linha.quantidade, 0)}</td>
-                            <td className="py-1.5 font-medium text-blue-700">{formatNumeroBR(linha.privativa)} m²</td>
+                            <td className="py-1.5 pr-3 font-mono">{formatNumeroBR(linha.quantidade, 0)}</td>
+                            <td className="py-1.5 font-mono font-medium text-blue-700">{formatNumeroBR(linha.privativa)} m²</td>
                           </tr>
                         ))}
                       </tbody>
