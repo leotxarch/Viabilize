@@ -395,6 +395,24 @@ function MetricCard({ label, value, unit, highlight, reference }) {
   );
 }
 
+// Par rótulo/valor compacto (sem borda), usado nas tabelas de relatório de Indicadores Gerais.
+function Kv({ label, value, tone }) {
+  const vazio = value === null || value === undefined || value === "";
+  const cor = vazio
+    ? "text-slate-300"
+    : tone === "red"
+    ? "text-red-600"
+    : tone === "emerald"
+    ? "text-emerald-600"
+    : "text-slate-800";
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="text-[10.5px] text-slate-400">{label}</p>
+      <p className={`text-[13px] font-semibold ${cor}`}>{vazio ? "—" : value}</p>
+    </div>
+  );
+}
+
 // Input compacto de tabela, controlado, usado no Resumo das Unidades
 
 function TableInput({ value, onChange, placeholder, width = "w-20", disabled, formatarM2, numerico }) {
@@ -1811,9 +1829,7 @@ export default function EstudoViabilidadeApp() {
     const totalVagas = blocosComputados.reduce((acc, b) => acc + b.totalVagasLajesBloco, 0);
     const totalUnidades = blocosComputados.reduce((acc, b) => acc + b.totalUnidadesBloco, 0);
     const totalPavimentos = blocosComputados.reduce((acc, b) => acc + b.totalPavimentosBloco, 0);
-    const totalAreaComum = blocosComputados.reduce((acc, b) => acc + b.totalAreaComumBloco, 0);
-    const totalPrivativaLajes = areaPrivativaTotal;
-    const totalVagasLajes = totalVagas;
+    const totalBlocosGeral = blocosComputados.reduce((acc, b) => acc + b.multiplicadorBlocos, 0);
 
     // --- Quadro de Áreas de Prefeitura ---
     // Sobresolos/Subsolos/Térreo vêm dos níveis cadastrados em Estacionamento (pelo nome do nível).
@@ -2272,9 +2288,7 @@ export default function EstudoViabilidadeApp() {
       totalVagas,
       totalUnidades,
       totalPavimentos,
-      totalAreaComum,
-      totalPrivativaLajes,
-      totalVagasLajes,
+      totalBlocosGeral,
       limiteTerracoPorPavimento,
       areaRemanescente,
       indicePrivativaTerreno,
@@ -2289,6 +2303,7 @@ export default function EstudoViabilidadeApp() {
       caUtilizado,
       nMinimoUnidades,
       nMaximoUnidades,
+      numeroResidenciasParaCotaParte,
       cotaParteReal,
       cotaParteAbaixoMinima,
       cotaParteAcimaMaxima,
@@ -2378,6 +2393,20 @@ export default function EstudoViabilidadeApp() {
     aplicarBonusHIS,
     residencialSemVagas,
   ]);
+
+  // Derivados só para exibição no relatório de Indicadores Gerais — não realimentam nenhum outro
+  // cálculo. CA utilizado por quinhão = computável atingida em cada quinhão ÷ área do próprio
+  // quinhão (referência rápida, diferente do "CA utilizado" geral do projeto).
+  const linhaR2VPotencial = agregados.potencialPorUso.find((l) => l.uso.startsWith("R2V"));
+  const linhaNRPotencial = agregados.potencialPorUso.find((l) => l.uso.startsWith("NR"));
+  const caR2VUtilizadoPorQuinhao =
+    linhaR2VPotencial && agregados.quinhaoResidencial > 0
+      ? linhaR2VPotencial.atingida / agregados.quinhaoResidencial
+      : null;
+  const caNRUtilizadoPorQuinhao =
+    linhaNRPotencial && paraNumero(quinhaoNaoResidencial) > 0
+      ? linhaNRPotencial.atingida / paraNumero(quinhaoNaoResidencial)
+      : null;
 
   // "HIS e HMP" é uma categoria dependente da Cota de Solidariedade — some/aparece sozinha por
   // padrão junto com ela, sem precisar de um interruptor próprio.
@@ -4904,327 +4933,286 @@ export default function EstudoViabilidadeApp() {
                   </div>
                 </div>
 
-                <SectionCard
-                  title="Resumo do empreendimento"
-                  subtitle="Agregados calculados automaticamente a partir das demais abas"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <MetricCard label="Área do terreno" value={formatNumeroBR(paraNumero(areaTerreno))} unit="m²" />
-                    <MetricCard
-                      label="Área remanescente"
-                      value={formatNumeroBR(agregados.areaRemanescente)}
-                      unit="m²"
-                    />
-                    <MetricCard
-                      label="Área computável total"
-                      value={formatNumeroBR(agregados.areaComputavelTotal)}
-                      unit="m²"
-                    />
-                    <MetricCard
-                      label="Área privativa total"
-                      value={formatNumeroBR(agregados.areaPrivativaTotal)}
-                      unit="m²"
-                    />
-                    <MetricCard
-                      label="Área não computável total"
-                      value={formatNumeroBR(agregados.areaNaoComputavelTotalProjeto)}
-                      unit="m²"
-                    />
-                    <MetricCard
-                      label="Área total de prefeitura"
-                      value={formatNumeroBR(agregados.areaTotalPrefeitura)}
-                      unit="m²"
-                      reference="Computável + Não computável"
-                    />
-                    <MetricCard
-                      label="CA utilizado"
-                      value={formatNumeroBR(agregados.caUtilizado)}
-                      reference={
-                        caMaximoZona
-                          ? `CA máximo da zona: ${formatNumeroBR(paraNumero(caMaximoZona))}`
-                          : "Preencha o CA máximo na aba Terreno e Zoneamento"
-                      }
-                    />
-                    <MetricCard
-                      label="Índice Privativa/Prefeitura"
+                <SectionCard title="Identificação" subtitle="Dados do estudo">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+                    <Kv label="Cliente" value={cliente.trim()} />
+                    <Kv label="Nome do projeto" value={nomeProjeto.trim()} />
+                    <Kv
+                      label="Opção / Revisão"
                       value={
-                        agregados.indicePrivativaPrefeitura !== null
-                          ? formatNumeroBR(agregados.indicePrivativaPrefeitura)
-                          : "—"
+                        opcaoEstudo.trim() || revisaoEstudo.trim()
+                          ? `${opcaoEstudo.trim() || "—"} / ${revisaoEstudo.trim() || "—"}`
+                          : null
                       }
-                      highlight
                     />
+                    <Kv label="Arquiteto responsável" value={arquitetoResponsavel.trim()} />
+                    <Kv label="Data" value={new Date().toLocaleDateString("pt-BR")} />
                   </div>
                 </SectionCard>
 
-                <SectionCard
-                  title="Quadro de Áreas de Prefeitura"
-                  subtitle="Área total construída considerada pela Prefeitura — Área computável total + Área não computável total"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Sobresolos" unit="m²" value={formatNumeroBR(agregados.sobresolosPrefeitura)} disabled />
-                    <Field label="Subsolos" unit="m²" value={formatNumeroBR(agregados.subsolosPrefeitura)} disabled />
-                    <Field
-                      label="Obras complementares"
-                      unit="m²"
-                      placeholder="0,00"
-                      value={obrasComplementares}
-                      onChange={(e) => setObrasComplementares(e.target.value)}
+                <SectionCard title="Terreno" subtitle="Local, zoneamento e parâmetros urbanísticos">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+                    <Kv label="Local" value={localEndereco.trim()} />
+                    <Kv label="Município" value={municipio.trim()} />
+                    <Kv label="Subprefeitura" value={subprefeitura} />
+                    <Kv label="Subdistrito" value={subdistrito} />
+                    <Kv label="Área do terreno" value={`${formatNumeroBR(paraNumero(areaTerreno))} m²`} />
+                    <Kv label="Reserva de calçada" value={`${formatNumeroBR(paraNumero(reservaCalcada))} m²`} />
+                    <Kv label="Doação" value={paraNumero(doacao) > 0 ? `${formatNumeroBR(paraNumero(doacao))} m²` : null} />
+                    <Kv
+                      label="Área remanescente"
+                      value={agregados.areaRemanescente !== null ? `${formatNumeroBR(agregados.areaRemanescente)} m²` : null}
                     />
-                    <Field
-                      label="Térreo coberto + Obras complementares"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.terreoObrasPrefeitura)}
-                      disabled
+                    <Kv
+                      label="Quinhão residencial"
+                      value={agregados.quinhaoResidencial !== null ? `${formatNumeroBR(agregados.quinhaoResidencial)} m²` : null}
                     />
-                    <Field
-                      label="Pavimentos (Computável + Não Computável)"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.pavimentosPrefeitura)}
-                      disabled
+                    <Kv
+                      label="Quinhão não residencial"
+                      value={paraNumero(quinhaoNaoResidencial) > 0 ? `${formatNumeroBR(paraNumero(quinhaoNaoResidencial))} m²` : null}
                     />
-                    <Field label="Ático" unit="m²" value={formatNumeroBR(agregados.aticoPrefeitura)} disabled />
+                    <Kv label="Zoneamento" value={zona} />
+                    <Kv label="CA básico da zona" value={caBasicoZona ? formatNumeroBR(paraNumero(caBasicoZona)) : null} />
+                    <Kv
+                      label="CA máximo da zona (Quadro 3)"
+                      value={caMaximoZona ? formatNumeroBR(paraNumero(caMaximoZona)) : null}
+                    />
+                    <Kv label="Majoração CA (NR)" value={paraNumero(majoracaoNR) > 0 ? formatNumeroBR(paraNumero(majoracaoNR)) : null} />
+                    <Kv
+                      label="CA máx. c/ benefícios"
+                      value={agregados.caMaximoComBeneficios !== null ? formatNumeroBR(agregados.caMaximoComBeneficios, 4) : null}
+                    />
+                    <Kv label="TO máxima" value={toMaximaZona ? `${formatNumeroBR(paraNumero(toMaximaZona))}%` : null} />
+                    <Kv label="Gabarito máximo" value={gabaritoMaximoZona ? `${formatNumeroBR(paraNumero(gabaritoMaximoZona))} m` : null} />
+                    <Kv label="Testada do terreno" value={testadaTerreno ? `${formatNumeroBR(paraNumero(testadaTerreno))} m` : null} />
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Cota-parte & Cota Ambiental" subtitle="Fracionamento do solo e taxa de permeabilidade">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+                    <Kv label="Cota-parte mínima" value={cotaParteMinima ? `${formatNumeroBR(paraNumero(cotaParteMinima))} m²` : null} />
+                    <Kv
+                      label="Nº mín. de unidades"
+                      value={agregados.nMinimoUnidades !== null ? formatNumeroBR(agregados.nMinimoUnidades, 0) : null}
+                    />
+                    <Kv
+                      label="Cota-parte real do projeto"
+                      value={agregados.cotaParteReal !== null ? `${formatNumeroBR(agregados.cotaParteReal)} m²` : null}
+                      tone={agregados.cotaParteAbaixoMinima || agregados.cotaParteAcimaMaxima ? "red" : undefined}
+                    />
+                    <Kv label="Fs (fator social)" value={fsFatorSocial !== "" ? formatNumeroBR(fsFatorSocial) : null} />
+                    <Kv
+                      label="Nº de unidades (cota-parte)"
+                      value={
+                        agregados.numeroResidenciasParaCotaParte > 0
+                          ? formatNumeroBR(agregados.numeroResidenciasParaCotaParte, 0)
+                          : null
+                      }
+                    />
+                    <Kv label="Cota Ambiental (QA exigido)" value={cotaAmbiental ? formatNumeroBR(paraNumero(cotaAmbiental)) : null} />
+                    <Kv label="TP necessária" value={tpNecessaria ? formatNumeroBR(paraNumero(tpNecessaria)) : null} />
+                    <Kv label="TP projeto" value={tpProjeto ? formatNumeroBR(paraNumero(tpProjeto)) : null} />
+                    <Kv label="Redução TP" value={agregados.reducaoTP !== null ? formatNumeroBR(agregados.reducaoTP) : null} />
                   </div>
                   <p className="mt-3 text-[11px] text-slate-400">
-                    As linhas acima são só referência (de onde vêm as áreas de garagem/pavimentos/ático). O
-                    "Total" abaixo usa a fórmula oficial: Área computável total + Área não computável total.
+                    Cota-parte aplica-se apenas ao quinhão e às unidades residenciais: R2V (qualquer área) e HMP/HIS (área
+                    computável superior a 30,00 m²). Redução TP = (TP projeto ÷ TP necessária) − 1.
                   </p>
-                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[11px] text-slate-400">Área computável total</p>
-                      <p className="text-[15px] font-semibold text-slate-800">
-                        {formatNumeroBR(agregados.areaComputavelTotal)} m²
+                </SectionCard>
+
+                <SectionCard title="Resumo do empreendimento" subtitle="CA e TO efetivamente utilizados pelo projeto">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+                    <Kv label="Uso" value="RESIDENCIAL" />
+                    <Kv label="Categoria de uso" value="R2V" />
+                    <Kv label="CA total utilizado" value={agregados.caUtilizado !== null ? formatNumeroBR(agregados.caUtilizado) : null} />
+                    <Kv label="TO utilizada" value={null} />
+                    <Kv label="Total de blocos" value={agregados.totalBlocosGeral > 0 ? formatNumeroBR(agregados.totalBlocosGeral) : null} />
+                    <Kv label="Total de vagas geral" value={agregados.totalVagas > 0 ? formatNumeroBR(agregados.totalVagas) : null} />
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-slate-200 p-3">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        CA utilizado por quinhão
                       </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Kv label="Residencial" value={caR2VUtilizadoPorQuinhao !== null ? formatNumeroBR(caR2VUtilizadoPorQuinhao) : null} />
+                        <Kv label="Não residencial" value={caNRUtilizadoPorQuinhao !== null ? formatNumeroBR(caNRUtilizadoPorQuinhao) : null} />
+                      </div>
                     </div>
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[11px] text-slate-400">Área não computável total</p>
-                      <p className="text-[15px] font-semibold text-slate-800">
-                        {formatNumeroBR(agregados.areaNaoComputavelTotalProjeto)} m²
+                    <div className="rounded-lg border border-slate-200 p-3">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        CA total utilizado (por terreno total)
+                      </p>
+                      <div className="grid grid-cols-3 gap-3">
+                        <Kv label="Residencial" value={caR2VUtilizadoPorQuinhao !== null ? formatNumeroBR(caR2VUtilizadoPorQuinhao) : null} />
+                        <Kv label="Não residencial" value={caNRUtilizadoPorQuinhao !== null ? formatNumeroBR(caNRUtilizadoPorQuinhao) : null} />
+                        <Kv label="Total" value={agregados.caUtilizado !== null ? formatNumeroBR(agregados.caUtilizado) : null} />
+                      </div>
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Totais / Índices" subtitle="Privativa, computável e área de prefeitura consolidadas">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-slate-200 p-3">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Privativa (m²)</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        <Kv label="Residencial" value={formatNumeroBR(agregados.areaPrivativaTotal)} />
+                        <Kv label="Não residencial" value={null} />
+                        <Kv label="Privativa total" value={formatNumeroBR(agregados.areaPrivativaTotal)} />
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 p-3">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Computável (m²)</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        <Kv label="Residencial" value={formatNumeroBR(agregados.areaComputavelTotal)} />
+                        <Kv label="Não residencial" value={null} />
+                        <Kv label="Computável total" value={formatNumeroBR(agregados.areaComputavelTotal)} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <p className="text-[11px] text-blue-600">Prefeitura total</p>
+                      <p className="text-[16px] font-semibold text-blue-700">{formatNumeroBR(agregados.areaTotalPrefeitura)} m²</p>
+                    </div>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <p className="text-[11px] text-blue-600">Privativa / Terreno</p>
+                      <p className="text-[16px] font-semibold text-blue-700">
+                        {agregados.indicePrivativaTerreno !== null ? formatNumeroBR(agregados.indicePrivativaTerreno) : "—"}
                       </p>
                     </div>
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                      <p className="text-[11px] text-blue-600">Total (Área de Prefeitura)</p>
-                      <p className="text-[18px] font-semibold text-blue-700">
-                        {formatNumeroBR(agregados.areaTotalPrefeitura)} m²
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    Área não computável total = Não computável de todos os blocos (Circulação, Hall, Lazer,
-                    Terraço, Escada NR, Área técnica, Outros e o Ático inteiro) + Obras complementares +
-                    Total geral do Quadro de Estacionamento (Garagem + Outros dos níveis).
-                  </p>
-                </SectionCard>
-
-                <SectionCard
-                  title="Índices Privativa/Terreno e Privativa/Prefeitura"
-                  subtitle="Somados automaticamente a partir do Resumo das Unidades — não são mais digitados"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field
-                      label="Área do terreno"
-                      unit="m²"
-                      value={formatNumeroBR(paraNumero(areaTerreno))}
-                      disabled
-                    />
-                    <Field
-                      label="Área privativa total"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.areaPrivativaTotal)}
-                      disabled
-                    />
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[13px] font-medium text-slate-500">Índice Privativa/Terreno</span>
-                      <div className="flex h-[38px] items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3">
-                        <Gauge size={16} className="text-blue-600" />
-                        <span className="text-[15px] font-semibold text-blue-700">
-                          {formatNumeroBR(agregados.indicePrivativaTerreno)}
-                        </span>
-                      </div>
-                    </div>
-                    <Field
-                      label="Área total de prefeitura"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.areaTotalPrefeitura)}
-                      disabled
-                    />
-                    <Field
-                      label="Área privativa total"
-                      unit="m²"
-                      value={formatNumeroBR(agregados.areaPrivativaTotal)}
-                      disabled
-                    />
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[13px] font-medium text-slate-500">Índice Privativa/Prefeitura</span>
-                      <div className="flex h-[38px] items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3">
-                        <Gauge size={16} className="text-blue-600" />
-                        <span className="text-[15px] font-semibold text-blue-700">
-                          {agregados.indicePrivativaPrefeitura !== null
-                            ? formatNumeroBR(agregados.indicePrivativaPrefeitura)
-                            : "—"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    Índice Privativa/Terreno = Área privativa total ÷ Área do terreno. Índice
-                    Privativa/Prefeitura = Área privativa total ÷ Área total de prefeitura (Quadro de Áreas
-                    de Prefeitura, acima). Preencha as unidades na aba "Resumo das Unidades" — os dois
-                    índices são recalculados automaticamente.
-                  </p>
-                </SectionCard>
-
-                <SectionCard
-                  title="Cota de Solidariedade"
-                  subtitle={
-                    agregados.cotaSolidariedadeAtiva
-                      ? agregados.cotaSolidariedadeObrigatoria
-                        ? "Obrigatória — área computável do projeto já ultrapassou 20.000 m²"
-                        : "Ativa por escolha (opcional) — configurada em Dados do Terreno"
-                      : "Inativa — projeto não está utilizando o instrumento"
-                  }
-                >
-                  {agregados.cotaSolidariedadeAtiva ? (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <MetricCard
-                        label="CA total com bônus"
-                        value={formatNumeroBR(agregados.caMaximoComBeneficios)}
-                        highlight
-                      />
-                      {agregados.pagamentoFundurbAtivo ? (
-                        <>
-                          <MetricCard
-                            label="Área da cota (FUNDURB)"
-                            value={formatNumeroBR(agregados.areaCotaFundurb)}
-                            unit="m²"
-                          />
-                          <MetricCard
-                            label="Valor de referência do m²"
-                            value={`R$ ${formatNumeroBR(paraNumero(valorReferenciaM2Fundurb))}`}
-                          />
-                          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                            <p className="text-[12px] font-medium text-blue-600">Valor total FUNDURB</p>
-                            <p className="mt-1 text-[22px] font-semibold text-blue-700">
-                              R$ {formatNumeroBR(agregados.valorTotalFundurb)}
-                            </p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <MetricCard
-                            label="Contrapartida HIS necessária"
-                            value={formatNumeroBR(agregados.contrapartidaHISNecessaria)}
-                            unit="m²"
-                          />
-                          <MetricCard
-                            label="Contrapartida HIS alocada"
-                            value={formatNumeroBR(agregados.contrapartidaHISAlocada)}
-                            unit="m²"
-                          />
-                          <div
-                            className={`rounded-xl border p-4 ${
-                              agregados.contrapartidaHISFalta > 0
-                                ? "border-red-200 bg-red-50"
-                                : "border-emerald-200 bg-emerald-50"
-                            }`}
-                          >
-                            <p className="text-[12px] font-medium text-slate-400">
-                              {agregados.contrapartidaHISFalta > 0 ? "Falta alocar" : "Contrapartida atendida"}
-                            </p>
-                            <p
-                              className={`mt-1 text-[22px] font-semibold ${
-                                agregados.contrapartidaHISFalta > 0 ? "text-red-600" : "text-emerald-600"
-                              }`}
-                            >
-                              {agregados.contrapartidaHISFalta > 0 ? (
-                                <>
-                                  {formatNumeroBR(agregados.contrapartidaHISFalta)}
-                                  <span className="ml-1 text-[13px] font-medium text-slate-400">m²</span>
-                                </>
-                              ) : (
-                                `${formatNumeroBR(agregados.percentualContrapartidaAtendida, 0)}%`
-                              )}
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-[12px] text-slate-400">
-                      Ative em "Dados do Terreno" → "Haverá Cota de Solidariedade?" para acompanhar o bônus
-                      de CA e a contrapartida HIS/HMP aqui.
-                    </p>
-                  )}
-                </SectionCard>
-
-                <SectionCard
-                  title="Falta (Estoura) — computável máxima do projeto"
-                  subtitle="Objetivo: zerar esse valor. Negativo = estourou o CA máximo; positivo = ainda há CA disponível"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <MetricCard
-                      label="Computável máximo permitido"
-                      value={
-                        agregados.computavelMaximoPermitido !== null
-                          ? formatNumeroBR(agregados.computavelMaximoPermitido)
-                          : "—"
-                      }
-                      unit="m²"
-                      reference="CA máximo da zona × Área do terreno"
-                    />
-                    <MetricCard
-                      label="Área computável total (utilizada)"
-                      value={formatNumeroBR(agregados.areaComputavelTotal)}
-                      unit="m²"
-                    />
-                    <div
-                      className={`rounded-xl border p-4 ${
-                        agregados.faltaEstoura === null
-                          ? "border-slate-200 bg-white"
-                          : agregados.faltaEstoura < 0
-                          ? "border-red-200 bg-red-50"
-                          : agregados.faltaEstoura === 0
-                          ? "border-emerald-200 bg-emerald-50"
-                          : "border-slate-200 bg-white"
-                      }`}
-                    >
-                      <p className="text-[12px] font-medium text-slate-400">Falta (Estoura)</p>
-                      <p
-                        className={`mt-1 text-[22px] font-semibold ${
-                          agregados.faltaEstoura === null
-                            ? "text-slate-800"
-                            : agregados.faltaEstoura < 0
-                            ? "text-red-600"
-                            : agregados.faltaEstoura === 0
-                            ? "text-emerald-600"
-                            : "text-slate-900"
-                        }`}
-                      >
-                        {formatNumeroBR(agregados.faltaEstoura)}
-                        <span className="ml-1 text-[13px] font-medium text-slate-400">m²</span>
+                      <p className="text-[11px] text-blue-600">Privativa / Prefeitura</p>
+                      <p className="text-[16px] font-semibold text-blue-700">
+                        {agregados.indicePrivativaPrefeitura !== null ? formatNumeroBR(agregados.indicePrivativaPrefeitura) : "—"}
                       </p>
                     </div>
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Blocos e Unidades" subtitle="Totais consolidados do empreendimento">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <MetricCard label="Total de pavimentos" value={formatNumeroBR(agregados.totalPavimentos)} />
-                    <MetricCard label="Total de unidades" value={formatNumeroBR(agregados.totalUnidades)} />
+                <SectionCard
+                  title="Benefícios — Áreas computáveis"
+                  subtitle="Cota de Solidariedade (opcional: se aplica ao CA do quadro R2V e NR)"
+                >
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-left text-[12px] text-slate-400">
+                          <th className="py-2 pr-3 font-medium">Trilha</th>
+                          <th className="py-2 pr-3 font-medium">CA máx.</th>
+                          <th className="py-2 pr-3 font-medium">Computável máxima</th>
+                          <th className="py-2 font-medium">Computável atingida</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {agregados.potencialPorUso.map((linha) => (
+                          <tr key={linha.uso} className="border-b border-slate-100">
+                            <td className="py-1.5 pr-3 font-medium text-slate-700">{linha.uso}</td>
+                            <td className="py-1.5 pr-3">{linha.ca !== null ? formatNumeroBR(linha.ca) : "—"}</td>
+                            <td className="py-1.5 pr-3">{linha.maximo !== null ? `${formatNumeroBR(linha.maximo)} m²` : "—"}</td>
+                            <td className="py-1.5">{linha.atingida !== null ? `${formatNumeroBR(linha.atingida)} m²` : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                </SectionCard>
 
-                  <p className="mb-2 mt-6 text-[12px] font-semibold uppercase tracking-wide text-slate-400">
-                    Detalhamento por tipologia
-                  </p>
+                <SectionCard title="Benefícios — Áreas não computáveis" subtitle="">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-left text-[12px] text-slate-400">
+                          <th className="py-2 pr-3 font-medium">Benefício</th>
+                          <th className="py-2 pr-3 font-medium">Área máxima / mínima</th>
+                          <th className="py-2 font-medium">Área atingida</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-slate-100">
+                          <td className="py-1.5 pr-3 font-medium text-slate-700">Fachada Ativa</td>
+                          <td className="py-1.5 pr-3">—</td>
+                          <td className="py-1.5">{formatNumeroBR(agregados.areaFachadaAtivaAlocada)} m²</td>
+                        </tr>
+                        <tr className="border-b border-slate-100">
+                          <td className="py-1.5 pr-3 font-medium text-slate-700">NR Incentivo</td>
+                          <td className="py-1.5 pr-3">{agregados.beneficioNR > 0 ? `${formatNumeroBR(agregados.beneficioNR)} m²` : "—"}</td>
+                          <td className="py-1.5">—</td>
+                        </tr>
+                        <tr className="border-b border-slate-100">
+                          <td className="py-1.5 pr-3 font-medium text-slate-700">HIS Cota Solid. (mínima)</td>
+                          <td className="py-1.5 pr-3">
+                            {agregados.contrapartidaHISNecessaria > 0 ? `${formatNumeroBR(agregados.contrapartidaHISNecessaria)} m²` : "—"}
+                          </td>
+                          <td className="py-1.5">
+                            {agregados.contrapartidaHISNecessaria > 0 ? `${formatNumeroBR(agregados.contrapartidaHISAlocada)} m²` : "—"}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 pr-3 font-medium text-slate-700">Benefício Residencial sem Vagas</td>
+                          <td className="py-1.5 pr-3">
+                            {agregados.potencialSemVagasMaximo > 0 ? `${formatNumeroBR(agregados.potencialSemVagasMaximo)} m²` : "—"}
+                          </td>
+                          <td className="py-1.5">—</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Tabela resumo de blocos" subtitle="Vai surgindo conforme os blocos forem preenchidos em Dados do Empreendimento">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-left text-[12px] text-slate-400">
+                          <th className="py-2 pr-3 font-medium">Bloco</th>
+                          <th className="py-2 pr-3 font-medium">Uso</th>
+                          <th className="py-2 pr-3 font-medium">Tipologia</th>
+                          <th className="py-2 pr-3 font-medium">Unidades / bloco</th>
+                          <th className="py-2 pr-3 font-medium">Unidades total</th>
+                          <th className="py-2 pr-3 font-medium">Privativa / bloco</th>
+                          <th className="py-2 pr-3 font-medium">Privativa total</th>
+                          <th className="py-2 font-medium">Pavimentos (c/térreo s/ático)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {agregados.blocosComputados.map((bloco) => {
+                          const tipologias = new Set();
+                          bloco.lajesComputadas.forEach((laje) => {
+                            if (laje.tipo === "atico") return;
+                            (laje.itens || []).forEach((item) => {
+                              if (item.descricao) tipologias.add(item.descricao);
+                            });
+                          });
+                          return (
+                            <tr key={bloco.id} className="border-b border-slate-100">
+                              <td className="py-1.5 pr-3 font-medium text-slate-700">{bloco.nomeExibicao}</td>
+                              <td className="py-1.5 pr-3">{bloco.uso || "—"}</td>
+                              <td className="py-1.5 pr-3">{tipologias.size ? Array.from(tipologias).join(" / ") : "—"}</td>
+                              <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalUnidadesBloco / bloco.multiplicadorBlocos)}</td>
+                              <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalUnidadesBloco)}</td>
+                              <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalPrivativaLajesBloco / bloco.multiplicadorBlocos)}</td>
+                              <td className="py-1.5 pr-3 font-medium text-blue-700">{formatNumeroBR(bloco.totalPrivativaLajesBloco)}</td>
+                              <td className="py-1.5">{formatNumeroBR(bloco.totalPavimentosSemAticoBloco)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Tabela resumo de unidades" subtitle="Catálogo de tipologias somado em todas as alocações do projeto">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[700px] border-collapse text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 text-left text-[12px] text-slate-400">
-                          <th className="py-2 pr-3 font-medium">Descrição (tipologia)</th>
-                          <th className="py-2 pr-3 font-medium">Quantidade</th>
-                          <th className="py-2 pr-3 font-medium">Computável (m²)</th>
-                          <th className="py-2 pr-3 font-medium">Privativa (m²)</th>
-                          <th className="py-2 font-medium">Vagas</th>
+                          <th className="py-2 pr-3 font-medium">Descrição</th>
+                          <th className="py-2 pr-3 font-medium">Privativa / unidade</th>
+                          <th className="py-2 pr-3 font-medium">Vagas / unidade</th>
+                          <th className="py-2 pr-3 font-medium">Quantidade total</th>
+                          <th className="py-2 font-medium">Privativa total</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -5241,17 +5229,9 @@ export default function EstudoViabilidadeApp() {
                             .reduce((acc, { item, qtdPavimentos }) => {
                               if (!item.descricao) return acc;
                               if (!acc[item.descricao]) {
-                                acc[item.descricao] = {
-                                  descricao: item.descricao,
-                                  quantidade: 0,
-                                  computavel: 0,
-                                  privativa: 0,
-                                  vagas: 0,
-                                };
+                                acc[item.descricao] = { descricao: item.descricao, quantidade: 0, privativa: 0, vagas: 0 };
                               }
-                              // Quantidade real no projeto = (unidades por pavimento) x (nº de pavimentos do grupo)
                               acc[item.descricao].quantidade += item.qtd * qtdPavimentos;
-                              acc[item.descricao].computavel += item.computavelItem * qtdPavimentos;
                               acc[item.descricao].privativa += item.privativaItem * qtdPavimentos;
                               acc[item.descricao].vagas += item.vagasItem * qtdPavimentos;
                               return acc;
@@ -5259,18 +5239,20 @@ export default function EstudoViabilidadeApp() {
                         ).map((linha) => (
                           <tr key={linha.descricao} className="border-b border-slate-100">
                             <td className="py-1.5 pr-3 font-medium text-slate-700">{linha.descricao}</td>
-                            <td className="py-1.5 pr-3">{formatNumeroBR(linha.quantidade)}</td>
-                            <td className="py-1.5 pr-3">{formatNumeroBR(linha.computavel)}</td>
-                            <td className="py-1.5 pr-3 font-medium text-blue-700">
-                              {formatNumeroBR(linha.privativa)}
+                            <td className="py-1.5 pr-3">
+                              {linha.quantidade > 0 ? formatNumeroBR(linha.privativa / linha.quantidade) : "—"} m²
                             </td>
-                            <td className="py-1.5">{formatNumeroBR(linha.vagas)}</td>
+                            <td className="py-1.5 pr-3">
+                              {linha.quantidade > 0 && linha.vagas > 0 ? formatNumeroBR(linha.vagas / linha.quantidade) : "—"}
+                            </td>
+                            <td className="py-1.5 pr-3">{formatNumeroBR(linha.quantidade, 0)}</td>
+                            <td className="py-1.5 font-medium text-blue-700">{formatNumeroBR(linha.privativa)} m²</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    {agregados.blocosComputados.every(
-                      (bloco) => bloco.lajesComputadas.every((laje) => laje.itens.length === 0)
+                    {agregados.blocosComputados.every((bloco) =>
+                      bloco.lajesComputadas.every((laje) => laje.itens.length === 0)
                     ) && (
                       <p className="mt-3 text-[12px] text-amber-600">
                         Ainda não há unidades alocadas em nenhum pavimento. Vá em "Dados do Empreendimento" →
@@ -5280,115 +5262,35 @@ export default function EstudoViabilidadeApp() {
                   </div>
                 </SectionCard>
 
-                <SectionCard
-                  title="Estacionamento — Subsolos e Sobresolos"
-                  subtitle="Resumo dos níveis de garagem cadastrados em Dados do Empreendimento"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <MetricCard label="Total garagem" value={formatNumeroBR(agregados.totalGaragemEstacionamento)} unit="m²" />
-                    <MetricCard label="Total outros" value={formatNumeroBR(agregados.totalOutrosEstacionamento)} unit="m²" />
-                    <MetricCard
-                      label="Total computável (R2V/HMP/HIS)"
-                      value={formatNumeroBR(agregados.totalComputavelEstacionamento)}
-                      unit="m²"
-                    />
-                    <MetricCard
-                      label="Total geral dos níveis"
-                      value={formatNumeroBR(agregados.totalGeralEstacionamento)}
-                      unit="m²"
-                      highlight
-                    />
-                    <MetricCard label="Cota de garagem (m²/vaga)" value={formatNumeroBR(agregados.cotaGaragem)} />
-                    <MetricCard
-                      label="Estacionamento necessário"
-                      value={formatNumeroBR(agregados.estacionamentoTotalNecessario)}
-                      unit="m²"
-                    />
-                    <MetricCard label="Total de vagas" value={formatNumeroBR(agregados.totalVagasGeral)} />
-                    <div
-                      className={`rounded-xl border p-4 ${
-                        agregados.faltaEstouraGaragem < 0
-                          ? "border-red-200 bg-red-50"
-                          : agregados.faltaEstouraGaragem === 0
-                          ? "border-emerald-200 bg-emerald-50"
-                          : "border-slate-200 bg-white"
-                      }`}
-                    >
-                      <p className="text-[12px] font-medium text-slate-400">Falta (Estoura) — garagem</p>
-                      <p
-                        className={`mt-1 text-[22px] font-semibold ${
-                          agregados.faltaEstouraGaragem < 0
-                            ? "text-red-600"
-                            : agregados.faltaEstouraGaragem === 0
-                            ? "text-emerald-600"
-                            : "text-slate-900"
-                        }`}
-                      >
-                        {formatNumeroBR(agregados.faltaEstouraGaragem)}
-                        <span className="ml-1 text-[13px] font-medium text-slate-400">m²</span>
-                      </p>
-                    </div>
-                  </div>
-                </SectionCard>
-
-                <SectionCard
-                  title="Áreas comuns não computáveis (pavimentos)"
-                  subtitle="Soma de Circulação R + Circulação NR + Hall R + Lazer R + Outros não computável, de todos os pavimentos"
-                >
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <MetricCard label="Área comum total" value={formatNumeroBR(agregados.totalAreaComum)} unit="m²" />
-                    <MetricCard
-                      label="Terraço máximo por pavimento (5%)"
-                      value={
-                        agregados.limiteTerracoPorPavimento !== null
-                          ? formatNumeroBR(agregados.limiteTerracoPorPavimento)
-                          : "—"
-                      }
-                      unit="m²"
-                    />
-                  </div>
-                </SectionCard>
-
-                <SectionCard
-                  title="Tabela de resumo de blocos"
-                  subtitle="Vai surgindo conforme os blocos forem preenchidos em Dados do Empreendimento"
-                >
+                <SectionCard title="Quadro de áreas de prefeitura" subtitle="">
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[700px] border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-left text-[12px] text-slate-400">
-                          <th className="py-2 pr-3 font-medium">Bloco / Uso</th>
-                          <th className="py-2 pr-3 font-medium">Pavimentos</th>
-                          <th className="py-2 pr-3 font-medium">Unidades</th>
-                          <th className="py-2 pr-3 font-medium">Computável (m²)</th>
-                          <th className="py-2 pr-3 font-medium">Privativa (m²)</th>
-                          <th className="py-2 font-medium">Vagas</th>
-                        </tr>
-                      </thead>
+                    <table className="w-full min-w-[500px] border-collapse text-sm">
                       <tbody>
-                        {agregados.blocosComputados.map((bloco) => (
-                          <tr key={bloco.id} className="border-b border-slate-100">
-                            <td className="py-1.5 pr-3 font-medium text-slate-700">{bloco.nomeExibicao}</td>
-                            <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalPavimentosBloco)}</td>
-                            <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalUnidadesBloco)}</td>
-                            <td className="py-1.5 pr-3">{formatNumeroBR(bloco.totalComputavelLajesBloco)}</td>
-                            <td className="py-1.5 pr-3 font-medium text-blue-700">
-                              {formatNumeroBR(bloco.totalPrivativaLajesBloco)}
-                            </td>
-                            <td className="py-1.5">{formatNumeroBR(bloco.totalVagasLajesBloco)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="font-semibold text-slate-800">
-                          <td className="pt-2 pr-3">Total geral</td>
-                          <td className="pt-2 pr-3">{formatNumeroBR(agregados.totalPavimentos)}</td>
-                          <td className="pt-2 pr-3">{formatNumeroBR(agregados.totalUnidades)}</td>
-                          <td className="pt-2 pr-3">{formatNumeroBR(agregados.areaComputavelTotal)}</td>
-                          <td className="pt-2 pr-3 text-blue-700">{formatNumeroBR(agregados.areaPrivativaTotal)}</td>
-                          <td className="pt-2">{formatNumeroBR(agregados.totalVagas)}</td>
+                        <tr className="border-b border-slate-100">
+                          <td className="py-1.5 pr-3 text-slate-700">Sobresolos</td>
+                          <td className="py-1.5">{agregados.sobresolosPrefeitura > 0 ? `${formatNumeroBR(agregados.sobresolosPrefeitura)} m²` : "—"}</td>
                         </tr>
-                      </tfoot>
+                        <tr className="border-b border-slate-100">
+                          <td className="py-1.5 pr-3 text-slate-700">Subsolos</td>
+                          <td className="py-1.5">{agregados.subsolosPrefeitura > 0 ? `${formatNumeroBR(agregados.subsolosPrefeitura)} m²` : "—"}</td>
+                        </tr>
+                        <tr className="border-b border-slate-100">
+                          <td className="py-1.5 pr-3 text-slate-700">Térreo coberto + obras complementares</td>
+                          <td className="py-1.5">{formatNumeroBR(agregados.terreoObrasPrefeitura)} m²</td>
+                        </tr>
+                        <tr className="border-b border-slate-100">
+                          <td className="py-1.5 pr-3 text-slate-700">Pavimentos (computável + não computável)</td>
+                          <td className="py-1.5">{formatNumeroBR(agregados.pavimentosPrefeitura)} m²</td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 pr-3 text-slate-700">Ático</td>
+                          <td className="py-1.5">{formatNumeroBR(agregados.aticoPrefeitura)} m²</td>
+                        </tr>
+                        <tr className="font-semibold text-slate-800">
+                          <td className="pt-2 pr-3">Total</td>
+                          <td className="pt-2">{formatNumeroBR(agregados.areaTotalPrefeitura)} m²</td>
+                        </tr>
+                      </tbody>
                     </table>
                   </div>
                 </SectionCard>
