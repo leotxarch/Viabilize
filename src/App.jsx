@@ -1,20 +1,24 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  LandPlot,
-  Building2,
-  Rows3,
   FileText,
   Plus,
   Trash2,
   ChevronRight,
   Gauge,
-  LayoutDashboard,
-  Wallet,
+  AlertTriangle,
 } from "lucide-react";
 
 // Chave do autosave no localStorage — muda o número da versão se o formato salvo mudar de forma
 // incompatível no futuro (evita tentar restaurar dados salvos com um formato antigo/quebrado).
 const AUTOSAVE_KEY = "viabilize_autosave_v1";
+
+// Metragens mínimas normativas por unidade HIS/HMP (habitabilidade/conformidade legal para
+// programas habitacionais em São Paulo). Área privativa mínima = computável + terraço social —
+// o terraço técnico (equipamentos de ar-condicionado/instalações) fica de fora dessa conta de
+// propósito, por ser acessório e não compor a área útil de moradia principal. Usado só como
+// auditoria visual (soft warning) na aba Resumo das Unidades — nunca bloqueia o preenchimento.
+const HIS_HMP_COMPUTAVEL_MINIMO = 21.8;
+const HIS_HMP_PRIVATIVA_MINIMA = 24.0;
 
 // Formata número no padrão pt-BR com N casas decimais (ex: 1,45)
 function formatNumeroBR(valor, casas = 2) {
@@ -90,11 +94,11 @@ function navegarComSetas(e) {
 // ------------------------------------------------------------------
 
 const TABS = [
-  { id: "terreno", label: "Terreno e Zoneamento", icon: LandPlot },
-  { id: "areas", label: "Resumo das Unidades", icon: Rows3 },
-  { id: "empreendimento", label: "Dados do Empreendimento", icon: Building2 },
-  { id: "custos", label: "Custos / Taxas / Outorgas", icon: Wallet },
-  { id: "indicadores", label: "Indicadores Gerais", icon: LayoutDashboard },
+  { id: "terreno", label: "Terreno e Zoneamento" },
+  { id: "beneficios", label: "Benefícios" },
+  { id: "areas", label: "Resumo das Unidades" },
+  { id: "empreendimento", label: "Dados do Empreendimento" },
+  { id: "indicadores", label: "Indicadores Gerais" },
 ];
 
 const ZONAS_SP = [
@@ -334,16 +338,39 @@ function SelectField({ label, options, ...props }) {
   );
 }
 
-function SectionCard({ title, subtitle, children }) {
+function SectionCard({ title, subtitle, children, collapsible, defaultOpen = true }) {
+  const [aberto, setAberto] = useState(defaultOpen);
+  if (!collapsible) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        {title && (
+          <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
+            <h3 className="text-[15px] font-semibold text-slate-800">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-[13px] text-slate-400">{subtitle}</p>}
+          </div>
+        )}
+        <div className="p-4 sm:p-6">{children}</div>
+      </div>
+    );
+  }
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      {title && (
-        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
+      <button
+        onClick={() => setAberto((v) => !v)}
+        className={`flex w-full items-center gap-2 px-4 py-4 text-left sm:px-6 ${
+          aberto ? "border-b border-slate-100" : ""
+        }`}
+      >
+        <ChevronRight
+          size={15}
+          className={`shrink-0 text-slate-400 transition-transform ${aberto ? "rotate-90" : ""}`}
+        />
+        <div>
           <h3 className="text-[15px] font-semibold text-slate-800">{title}</h3>
           {subtitle && <p className="mt-0.5 text-[13px] text-slate-400">{subtitle}</p>}
         </div>
-      )}
-      <div className="p-4 sm:p-6">{children}</div>
+      </button>
+      {aberto && <div className="p-4 sm:p-6">{children}</div>}
     </div>
   );
 }
@@ -546,6 +573,20 @@ function TabelaUnidades({
                       title="Existe mais de uma unidade com esse nome. Isso é permitido, mas confira nos pavimentos qual das duas foi selecionada em cada alocação."
                     >
                       nome repetido no catálogo
+                    </p>
+                  )}
+                  {(u.abaixoComputavelMinimoHISHMP || u.abaixoPrivativaMinimaHISHMP) && (
+                    <p
+                      className="mt-1 flex items-center gap-1 text-[10px] font-medium text-red-600"
+                      title={`Unidade HIS/HMP abaixo do mínimo normativo: ${HIS_HMP_COMPUTAVEL_MINIMO.toLocaleString(
+                        "pt-BR",
+                        { minimumFractionDigits: 1 }
+                      )} m² computáveis e ${HIS_HMP_PRIVATIVA_MINIMA.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 1,
+                      })} m² privativos por unidade (Privativa = Computável + Terraço social; a área técnica/terraço técnico não conta para esse mínimo).`}
+                    >
+                      <AlertTriangle size={11} className="shrink-0" />
+                      abaixo do mínimo HIS/HMP
                     </p>
                   )}
                 </td>
@@ -914,10 +955,10 @@ export default function EstudoViabilidadeApp() {
   const [majoracaoNR, setMajoracaoNR] = useState("");
   const [aplicarBonusHMP, setAplicarBonusHMP] = useState("");
   const [aplicarBonusHIS, setAplicarBonusHIS] = useState("");
+  const [residencialSemVagas, setResidencialSemVagas] = useState("");
   const [tpNecessaria, setTpNecessaria] = useState("");
   const [tpProjeto, setTpProjeto] = useState("");
   const [cotaAmbiental, setCotaAmbiental] = useState("");
-  const [cotaParteProjeto, setCotaParteProjeto] = useState("");
   const [numeroUnidadesProjeto, setNumeroUnidadesProjeto] = useState("");
   const [toMaximaZona, setToMaximaZona] = useState("");
   const [gabaritoMaximoZona, setGabaritoMaximoZona] = useState("");
@@ -1000,9 +1041,8 @@ export default function EstudoViabilidadeApp() {
 
   // Blocos minimizados (apenas controle visual, não afeta os dados)
   const [blocosMinimizados, setBlocosMinimizados] = useState(() => new Set());
-  // Estacionamento e Cota-parte são consulta pontual — começam recolhidos por padrão.
+  // Estacionamento é consulta pontual — começa recolhido por padrão.
   const [estacionamentoMinimizado, setEstacionamentoMinimizado] = useState(true);
-  const [cotaParteAberta, setCotaParteAberta] = useState(false);
   // Uso Não Residencial (NR): módulo opcional, só existe em projetos de uso misto — começa desligado.
   const [usoNaoResidencialAtivo, setUsoNaoResidencialAtivo] = useState("");
   // Nome do uso NR real (ex: "Hotel", "Comercial") — apenas rotula a linha na tabela "Potencial
@@ -1109,7 +1149,9 @@ export default function EstudoViabilidadeApp() {
     } catch {
       return; // dado corrompido — ignora e mantém os valores padrão
     }
-    if (dados.activeTab !== undefined) setActiveTab(dados.activeTab);
+    // "custos" foi removida do app — projetos salvos antes disso caem em "indicadores".
+    if (dados.activeTab !== undefined)
+      setActiveTab(dados.activeTab === "custos" ? "indicadores" : dados.activeTab);
     if (dados.cliente !== undefined) setCliente(dados.cliente);
     if (dados.nomeProjeto !== undefined) setNomeProjeto(dados.nomeProjeto);
     if (dados.arquitetoResponsavel !== undefined) setArquitetoResponsavel(dados.arquitetoResponsavel);
@@ -1142,10 +1184,10 @@ export default function EstudoViabilidadeApp() {
     if (dados.majoracaoNR !== undefined) setMajoracaoNR(dados.majoracaoNR);
     if (dados.aplicarBonusHMP !== undefined) setAplicarBonusHMP(dados.aplicarBonusHMP);
     if (dados.aplicarBonusHIS !== undefined) setAplicarBonusHIS(dados.aplicarBonusHIS);
+    if (dados.residencialSemVagas !== undefined) setResidencialSemVagas(dados.residencialSemVagas);
     if (dados.tpNecessaria !== undefined) setTpNecessaria(dados.tpNecessaria);
     if (dados.tpProjeto !== undefined) setTpProjeto(dados.tpProjeto);
     if (dados.cotaAmbiental !== undefined) setCotaAmbiental(dados.cotaAmbiental);
-    if (dados.cotaParteProjeto !== undefined) setCotaParteProjeto(dados.cotaParteProjeto);
     if (dados.numeroUnidadesProjeto !== undefined) setNumeroUnidadesProjeto(dados.numeroUnidadesProjeto);
     if (dados.toMaximaZona !== undefined) setToMaximaZona(dados.toMaximaZona);
     if (dados.gabaritoMaximoZona !== undefined) setGabaritoMaximoZona(dados.gabaritoMaximoZona);
@@ -1206,10 +1248,10 @@ export default function EstudoViabilidadeApp() {
       majoracaoNR,
       aplicarBonusHMP,
       aplicarBonusHIS,
+      residencialSemVagas,
       tpNecessaria,
       tpProjeto,
       cotaAmbiental,
-      cotaParteProjeto,
       numeroUnidadesProjeto,
       toMaximaZona,
       gabaritoMaximoZona,
@@ -1273,10 +1315,10 @@ export default function EstudoViabilidadeApp() {
     majoracaoNR,
     aplicarBonusHMP,
     aplicarBonusHIS,
+    residencialSemVagas,
     tpNecessaria,
     tpProjeto,
     cotaAmbiental,
-    cotaParteProjeto,
     numeroUnidadesProjeto,
     toMaximaZona,
     gabaritoMaximoZona,
@@ -1395,6 +1437,17 @@ export default function EstudoViabilidadeApp() {
     const limiteTerracoPorPavimento =
       areaRemanescente !== null && areaRemanescente > 0 ? areaRemanescente * 0.05 : null;
 
+    // Verifica se a unidade está marcada como HIS ou HMP pelo campo "Categoria" (funciona não
+    // importa em qual tabela/categoria de tabela ela foi cadastrada — Resumo das Unidades, HIS e
+    // HMP, ou qualquer categoria personalizada — e também via "Outro" com o texto "HIS"/"HMP").
+    const unidadeEhCategoria = (ref, alvo) => {
+      if (!ref) return false;
+      const normalizar = (v) => (v || "").toString().trim().toUpperCase();
+      if (normalizar(ref.categoria) === alvo) return true;
+      if (normalizar(ref.categoria) === "OUTRO" && normalizar(ref.categoriaOutro) === alvo) return true;
+      return false;
+    };
+
     // Cada linha do Resumo das Unidades define os dados POR UNIDADE (não multiplicados).
     // Privativa por unidade = Computável + Incentivo + Terraço + Á.Técnica + Ornamento + Descoberta + Depósito
     const calcularLinha = (u, categoriaInfo) => {
@@ -1419,6 +1472,15 @@ export default function EstudoViabilidadeApp() {
         deposito +
         hallPrivativo;
       const percentualTerracoPrivativa = privativaUnidade > 0 ? (terraco / privativaUnidade) * 100 : null;
+      // Auditoria de metragem mínima HIS/HMP (soft warning — nunca bloqueia o preenchimento).
+      // Área privativa mínima aqui = computável + terraço social, propositalmente SEM a área
+      // técnica (terraço técnico/equipamentos), que é acessória e não conta para o mínimo exigido.
+      const ehHisOuHmp = unidadeEhCategoria(u, "HIS") || unidadeEhCategoria(u, "HMP");
+      const areaPrivativaHabitacional = computavel + terraco;
+      const abaixoComputavelMinimoHISHMP =
+        ehHisOuHmp && computavel > 0 && computavel < HIS_HMP_COMPUTAVEL_MINIMO;
+      const abaixoPrivativaMinimaHISHMP =
+        ehHisOuHmp && areaPrivativaHabitacional > 0 && areaPrivativaHabitacional < HIS_HMP_PRIVATIVA_MINIMA;
       // A "computável" de uma unidade é sempre o valor cru digitado no campo "Computável (m²)",
       // não importa em qual tabela/categoria ela está cadastrada. A tabela (Incentivo, HIS e HMP
       // etc.) é só uma organização visual — não zera a computável automaticamente. Isso permite
@@ -1440,6 +1502,9 @@ export default function EstudoViabilidadeApp() {
         descobertaUnidade: descoberta,
         depositoUnidade: deposito,
         percentualTerracoPrivativa,
+        ehHisOuHmp,
+        abaixoComputavelMinimoHISHMP,
+        abaixoPrivativaMinimaHISHMP,
       };
     };
 
@@ -1860,18 +1925,34 @@ export default function EstudoViabilidadeApp() {
     const potencialHMPMaximo = potencialHMPAtivo && terreno > 0 && caHMP !== null ? terreno * caHMP : null;
     const potencialHISMaximo = potencialHISAtivo && terreno > 0 && caHIS !== null ? terreno * caHIS : null;
 
-    // CA Resultante Total = soma dos CAs de todas as trilhas ativas (R2V/NR com bônus + HMP + HIS),
-    // igual à linha "CA Resultante" da planilha "Divisão por Terreno Virtual" (ex: 4,80 + 1,00 + 2,00
-    // = 7,80). Área Computável Total (potencial teórico) = soma das áreas computáveis máximas de
-    // cada trilha (quinhão x CA) — é essa soma, e não a área real já modelada nos pavimentos, que
-    // alimenta a base de cálculo da Cota de Solidariedade (10%), do Benefício NR e do Benefício
+    // Área Computável Total (potencial teórico) = soma das áreas computáveis máximas das 4 trilhas
+    // base (quinhão x CA) — é essa soma, e não a área real já modelada nos pavimentos, que alimenta
+    // a base de cálculo da Cota de Solidariedade (10%), do Benefício NR e do Benefício
     // empreendimento sem vagas abaixo: na planilha de referência, a Cota de Solidariedade é
     // dimensionada a partir do potencial construtivo teórico do terreno (zoneamento x quinhões),
     // não a partir do que já foi desenhado pavimento a pavimento.
-    const caResultanteTotal =
-      (caR2V || 0) + (potencialHMPAtivo && caHMP !== null ? caHMP : 0) + (potencialHISAtivo && caHIS !== null ? caHIS : 0);
     const potencialTeoricoTotal =
       (potencialR2VMaximo || 0) + (potencialNRMaximo || 0) + (potencialHMPMaximo || 0) + (potencialHISMaximo || 0);
+
+    // Bônus "Residencial sem Vagas": trilha adicional e independente (5ª trilha) que soma +10% sobre
+    // o potencial teórico das 4 trilhas base quando o projetista ativa o toggle (só disponível com a
+    // Cota de Solidariedade ativa, mesmo instrumento do Plano Diretor). Propositalmente DIFERENTE do
+    // "Benefício empreendimento sem vagas" mais abaixo, que continua sendo só um teto de referência
+    // para área de circulação não computável e nunca soma no potencial construtível — este bônus
+    // aqui É somado de fato no CA Resultante, na Área Computável Máxima Permitida e no Falta/Estoura.
+    const residencialSemVagasAtivo = cotaSolidariedadeAtiva && residencialSemVagas === "Sim";
+    const potencialSemVagasMaximo = residencialSemVagasAtivo ? potencialTeoricoTotal * 0.1 : 0;
+    const caSemVagasEquivalente =
+      residencialSemVagasAtivo && terreno > 0 ? potencialSemVagasMaximo / terreno : 0;
+
+    // CA Resultante Total = soma dos CAs de todas as trilhas ativas (R2V/NR com bônus + HMP + HIS +
+    // Residencial sem Vagas), igual à linha "CA Resultante" da planilha "Divisão por Terreno Virtual"
+    // (ex: 4,80 + 1,00 + 2,00 = 7,80, sem contar o bônus sem vagas quando inativo).
+    const caResultanteTotal =
+      (caR2V || 0) +
+      (potencialHMPAtivo && caHMP !== null ? caHMP : 0) +
+      (potencialHISAtivo && caHIS !== null ? caHIS : 0) +
+      caSemVagasEquivalente;
 
     // Contrapartida necessária = 10% da Área Computável Total (potencial teórico dos quinhões, ver
     // nota acima) — recalcula sozinha sempre que o terreno, os quinhões ou o CA mudarem.
@@ -1886,17 +1967,6 @@ export default function EstudoViabilidadeApp() {
     // campo — o usuário aloca a área de circulação normalmente no Pavimento, dentro desse limite).
     const beneficioNR = cotaSolidariedadeAtiva ? potencialTeoricoTotal * 0.2 : 0;
     const beneficioEmpreendimentoSemVagas = cotaSolidariedadeAtiva ? potencialTeoricoTotal * 0.1 : 0;
-
-    // Verifica se a unidade está marcada como HIS ou HMP pelo campo "Categoria" (funciona não
-    // importa em qual tabela/categoria de tabela ela foi cadastrada — Resumo das Unidades, HIS e
-    // HMP, ou qualquer categoria personalizada — e também via "Outro" com o texto "HIS"/"HMP").
-    const unidadeEhCategoria = (ref, alvo) => {
-      if (!ref) return false;
-      const normalizar = (v) => (v || "").toString().trim().toUpperCase();
-      if (normalizar(ref.categoria) === alvo) return true;
-      if (normalizar(ref.categoria) === "OUTRO" && normalizar(ref.categoriaOutro) === alvo) return true;
-      return false;
-    };
 
     // Soma a área privativa (construída) das unidades marcadas como HIS/HMP já alocadas nos
     // pavimentos, opcionalmente filtrando por uma categoria específica ("HIS" ou "HMP"). Usa a
@@ -1927,6 +1997,26 @@ export default function EstudoViabilidadeApp() {
       );
     const contrapartidaHISAlocada = somarAlocadoHisHmp(null);
     const contrapartidaHISFalta = contrapartidaHISNecessaria - contrapartidaHISAlocada;
+
+    // Área de Fachada Ativa já alocada (privativa das unidades cadastradas na categoria fixa
+    // "Fachada Ativa" do catálogo, que já é tratada como incentivo não computável — ver
+    // CATEGORIAS_TABELAS_PADRAO). Usado só como leitura de referência na aba Benefícios.
+    const areaFachadaAtivaAlocada = blocosComputados.reduce(
+      (acc, bloco) =>
+        acc +
+        bloco.lajesComputadas.reduce((accLaje, laje) => {
+          if (laje.tipo === "atico") return accLaje;
+          return (
+            accLaje +
+            (laje.itens || []).reduce((accItem, item) => {
+              const ref = resolverUnidadeItem(item, unidadesPorId, unidadesPorDescricaoGlobal);
+              if (!ref || ref.tabela !== "fachadaAtiva") return accItem;
+              return accItem + item.privativaItem * laje.quantidadePavimentos * bloco.multiplicadorBlocos;
+            }, 0)
+          );
+        }, 0),
+      0
+    );
     // % atendido = já alocado ÷ exigido, sempre travado em 100% quando a exigência já foi cumprida
     // (evita mostrar "0,00 m²" no lugar de "Atendido", que parecia dizer que nada foi alocado).
     const percentualContrapartidaAtendida =
@@ -2015,6 +2105,22 @@ export default function EstudoViabilidadeApp() {
         ? Math.floor(areaComputavelTotal / (caMaximoZonaNum * cotaParteMinimaNum))
         : null;
 
+    // Cota-parte real do projeto = Área útil do terreno (terreno − reserva de calçada) ÷ Número
+    // total de unidades cadastradas — prioriza as unidades já alocadas nos pavimentos
+    // (totalUnidades, dado real) e só usa o campo manual "Nº de unidades do projeto" como estimativa
+    // enquanto o projeto ainda não tem pavimentos preenchidos. Auditada (soft warning) contra os
+    // limites mínimo/máximo do Quadro 3 da zona — nunca bloqueia o preenchimento.
+    const numeroUnidadesProjetoNum = paraNumero(numeroUnidadesProjeto);
+    const numeroResidenciasParaCotaParte = totalUnidades > 0 ? totalUnidades : numeroUnidadesProjetoNum;
+    const cotaParteReal =
+      v4EmpreendimentoNum > 0 && numeroResidenciasParaCotaParte > 0
+        ? v4EmpreendimentoNum / numeroResidenciasParaCotaParte
+        : null;
+    const cotaParteAbaixoMinima =
+      cotaParteReal !== null && cotaParteMinimaNum > 0 && cotaParteReal < cotaParteMinimaNum;
+    const cotaParteAcimaMaxima =
+      cotaParteReal !== null && cotaParteMaximaNum > 0 && cotaParteReal > cotaParteMaximaNum;
+
     // (CA máximo com benefícios, Área computável com bônus e Potencial construtivo por uso —
     // R2V/NR/HMP/HIS — já foram calculados acima, antes da Cota de Solidariedade.)
 
@@ -2097,13 +2203,30 @@ export default function EstudoViabilidadeApp() {
         : []),
       { uso: "HMP (bônus)", ca: potencialHMPAtivo ? caHMP : null, base: "Terreno total", maximo: potencialHMPMaximo, atingida: potencialHMPAtivo ? potencialHMPAtingida : null, falta: potencialHMPFalta },
       { uso: "HIS (bônus)", ca: potencialHISAtivo ? caHIS : null, base: "Terreno total", maximo: potencialHISMaximo, atingida: potencialHISAtivo ? potencialHISAtingida : null, falta: potencialHISFalta },
+      // Residencial sem Vagas: bônus de +10%, sem uma categoria de unidade própria para medir
+      // "atingida" (o CA extra é consumido pelas próprias unidades residenciais já contadas em R2V),
+      // por isso aparece na tabela só como referência de máxima, sem coluna Atingida/Falta.
+      ...(residencialSemVagasAtivo
+        ? [
+            {
+              uso: "Residencial sem Vagas (bônus)",
+              ca: null,
+              base: "10% do potencial teórico (R2V+NR+HMP+HIS)",
+              maximo: potencialSemVagasMaximo,
+              atingida: null,
+              falta: null,
+            },
+          ]
+        : []),
     ];
 
-    // Computável máximo permitido = soma das máximas das 4 trilhas (R2V + NR + HMP + HIS), cada uma
-    // com sua própria base de área (quinhão ou terreno total).
-    const computavelMaximoPermitido = [potencialR2VMaximo, potencialNRMaximo, potencialHMPMaximo, potencialHISMaximo]
-      .filter((v) => v !== null)
-      .reduce((acc, v) => acc + v, 0);
+    // Computável máximo permitido = soma das máximas das 4 trilhas base (R2V + NR + HMP + HIS) + o
+    // bônus Residencial sem Vagas quando ativo, cada uma com sua própria base de área (quinhão,
+    // terreno total, ou percentual do potencial teórico).
+    const computavelMaximoPermitido =
+      [potencialR2VMaximo, potencialNRMaximo, potencialHMPMaximo, potencialHISMaximo]
+        .filter((v) => v !== null)
+        .reduce((acc, v) => acc + v, 0) + potencialSemVagasMaximo;
     // FALTA (ESTOURA) headline = Computável máximo permitido − Área computável total do projeto (a
     // mesma comparação global que a planilha real faz). Não é a soma das 4 "faltas" por trilha: a soma
     // por trilha pode divergir da área computável total real por dois motivos — áreas comuns
@@ -2166,6 +2289,9 @@ export default function EstudoViabilidadeApp() {
       caUtilizado,
       nMinimoUnidades,
       nMaximoUnidades,
+      cotaParteReal,
+      cotaParteAbaixoMinima,
+      cotaParteAcimaMaxima,
       caMaximoComBeneficios,
       caMaximoComBeneficiosCalculado,
       areaComputavelComBonusCotaSolidariedade,
@@ -2178,6 +2304,7 @@ export default function EstudoViabilidadeApp() {
       beneficioEmpreendimentoSemVagas,
       contrapartidaHISAlocada,
       contrapartidaHISFalta,
+      areaFachadaAtivaAlocada,
       percentualContrapartidaAtendida,
       splitHISNum,
       splitHMPNum,
@@ -2207,6 +2334,8 @@ export default function EstudoViabilidadeApp() {
       caHIS,
       potencialHMPAtivo,
       potencialHISAtivo,
+      residencialSemVagasAtivo,
+      potencialSemVagasMaximo,
       potencialPorUso,
     };
   }, [
@@ -2239,6 +2368,7 @@ export default function EstudoViabilidadeApp() {
     caMaximoComBeneficiosManual,
     cotaParteMaxima,
     cotaParteMinima,
+    numeroUnidadesProjeto,
     tpNecessaria,
     tpProjeto,
     quinhaoNaoResidencial,
@@ -2246,6 +2376,7 @@ export default function EstudoViabilidadeApp() {
     nomeUsoNR,
     aplicarBonusHMP,
     aplicarBonusHIS,
+    residencialSemVagas,
   ]);
 
   // "HIS e HMP" é uma categoria dependente da Cota de Solidariedade — some/aparece sozinha por
@@ -2464,6 +2595,7 @@ export default function EstudoViabilidadeApp() {
                 <SectionCard
                   title="Localização"
                   subtitle="Identificação e localização administrativa do terreno"
+                  collapsible
                 >
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
@@ -2506,6 +2638,7 @@ export default function EstudoViabilidadeApp() {
                 <SectionCard
                   title="Áreas do terreno"
                   subtitle="Áreas totais, de reserva e quinhão residencial"
+                  collapsible
                 >
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <Field
@@ -2551,6 +2684,7 @@ export default function EstudoViabilidadeApp() {
                 <SectionCard
                   title="Parâmetros da zona"
                   subtitle="Índices urbanísticos aplicáveis conforme a legislação de zoneamento — Quadro 3, Lei nº 16.402/2016"
+                  collapsible
                 >
                   <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
                     <p className="text-[12px] text-blue-700">
@@ -2716,29 +2850,12 @@ export default function EstudoViabilidadeApp() {
                   )}
                 </SectionCard>
 
-                <SectionCard title="" subtitle="">
-                  <button
-                    onClick={() => setCotaParteAberta((v) => !v)}
-                    className="mb-1 flex w-full items-center gap-2 text-left"
-                  >
-                    <ChevronRight
-                      size={15}
-                      className={`shrink-0 text-slate-400 transition-transform ${
-                        cotaParteAberta ? "rotate-90" : ""
-                      }`}
-                    />
-                    <div>
-                      <h3 className="text-[15px] font-semibold text-slate-800">
-                        Cota-parte e fator social
-                      </h3>
-                      <p className="text-[13px] text-slate-400">
-                        Parâmetros de fracionamento do solo, limite de adensamento e fator social
-                      </p>
-                    </div>
-                  </button>
-                  {cotaParteAberta && (
-                  <>
-                  <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <SectionCard
+                  title="Cota-parte e fator social"
+                  subtitle="Parâmetros de fracionamento do solo, limite de adensamento e fator social"
+                  collapsible
+                >
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <Field
                       label="Cota-parte máxima"
                       unit="m²"
@@ -2775,13 +2892,31 @@ export default function EstudoViabilidadeApp() {
                       }
                       disabled
                     />
-                    <Field
-                      label="Cota-parte do projeto"
-                      unit="m²"
-                      placeholder="0,00"
-                      value={cotaParteProjeto}
-                      onChange={(e) => setCotaParteProjeto(e.target.value)}
-                    />
+                    <div className="flex flex-col gap-1.5">
+                      <Field
+                        label="Cota-parte real do projeto"
+                        unit="m²"
+                        value={
+                          agregados.cotaParteReal !== null
+                            ? formatNumeroBR(agregados.cotaParteReal)
+                            : "calculado"
+                        }
+                        disabled
+                      />
+                      {(agregados.cotaParteAbaixoMinima || agregados.cotaParteAcimaMaxima) && (
+                        <p
+                          className="flex items-center gap-1 text-[10px] font-medium text-red-600"
+                          title={`Cota-parte real (Área útil do terreno ÷ Nº total de unidades) fora dos limites do Quadro 3 da zona: mínima ${
+                            cotaParteMinima || "—"
+                          } m² e máxima ${cotaParteMaxima || "—"} m² por unidade.`}
+                        >
+                          <AlertTriangle size={11} className="shrink-0" />
+                          {agregados.cotaParteAbaixoMinima
+                            ? "abaixo da cota-parte mínima"
+                            : "acima da cota-parte máxima"}
+                        </p>
+                      )}
+                    </div>
                     <label className="flex flex-col gap-1.5">
                       <span className="text-[13px] font-medium text-slate-500">Categoria de Uso (Fs)</span>
                       <select
@@ -2800,7 +2935,7 @@ export default function EstudoViabilidadeApp() {
                       </select>
                     </label>
                     <Field
-                      label="Nº de unidades do projeto"
+                      label="Nº de unidades do projeto (estimativa)"
                       placeholder="0"
                       value={numeroUnidadesProjeto}
                       numerico
@@ -2811,15 +2946,24 @@ export default function EstudoViabilidadeApp() {
                     Nº mínimo de unidades = arredondar para cima (Área computável residencial ÷ (CA máximo
                     da zona × Cota-parte máxima)). Nº máximo de unidades (limite de adensamento) =
                     arredondar para baixo (Área computável residencial ÷ (CA máximo da zona × Cota-parte
-                    mínima)).
+                    mínima)). Cota-parte real do projeto = Área útil do terreno (terreno − reserva de
+                    calçada) ÷ Nº total de unidades — usa as unidades já alocadas nos pavimentos
+                    (Dados do Empreendimento) e só recorre à estimativa manual acima enquanto nenhum
+                    pavimento foi preenchido. Alerta em vermelho quando o valor sai dos limites do
+                    Quadro 3 da zona (soft warning — não bloqueia o preenchimento).
                   </p>
-                  </>
-                  )}
                 </SectionCard>
 
+              </>
+            )}
+
+            {/* ---------------- ABA: BENEFÍCIOS ---------------- */}
+            {activeTab === "beneficios" && (
+              <>
                 <SectionCard
                   title="Uso Não Residencial (NR)"
                   subtitle="Módulo opcional — ative apenas se o empreendimento tiver quinhão de terreno dedicado a uso comercial/não residencial"
+                  collapsible
                 >
                   <label className="flex max-w-xs flex-col gap-1.5">
                     <span className="text-[13px] font-medium text-slate-500">
@@ -2881,6 +3025,7 @@ export default function EstudoViabilidadeApp() {
                 <SectionCard
                   title="Cota de Solidariedade"
                   subtitle="Instrumento do Plano Diretor: destinação de área/unidades para HIS/HMP em troca de bônus de potencial construtivo"
+                  collapsible
                 >
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="flex flex-col gap-1.5">
@@ -3053,9 +3198,8 @@ export default function EstudoViabilidadeApp() {
                             </div>
                           </div>
                           <p className="mt-2 text-[11px] text-slate-400">
-                            Valor Total FUNDURB = Área da cota × Valor de referência do m². Esse valor é
-                            lançado automaticamente na aba "Custos / Taxas / Outorgas" como uma despesa de
-                            contrapartida urbanística.
+                            Valor Total FUNDURB = Área da cota × Valor de referência do m² — essa é a
+                            despesa de contrapartida urbanística do empreendimento.
                           </p>
                         </>
                       ) : (
@@ -3275,6 +3419,7 @@ export default function EstudoViabilidadeApp() {
                 <SectionCard
                   title="Potencial Construtivo por Uso"
                   subtitle="R2V e NR usam seus próprios quinhões de terreno; HMP e HIS são bônus adicionais aplicados sobre o terreno total"
+                  collapsible
                 >
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <label className="flex flex-col gap-1.5">
@@ -3377,6 +3522,65 @@ export default function EstudoViabilidadeApp() {
                 </SectionCard>
                 )}
 
+                {agregados.cotaSolidariedadeAtiva && (
+                <SectionCard
+                  title="Residencial sem Vagas"
+                  subtitle="Bônus adicional de potencial construtivo — independente do teto de circulação não computável já existente"
+                  collapsible
+                >
+                  <label className="flex max-w-xs flex-col gap-1.5">
+                    <span className="text-[13px] font-medium text-slate-500">
+                      Ativar bônus Residencial sem Vagas?
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      value={residencialSemVagas}
+                      onChange={(e) => setResidencialSemVagas(e.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="Sim">Sim</option>
+                      <option value="Não">Não</option>
+                    </select>
+                  </label>
+                  {agregados.residencialSemVagasAtivo && (
+                    <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                      <p className="text-[11px] text-emerald-600">
+                        Bônus aplicado (10% do potencial teórico R2V+NR+HMP+HIS)
+                      </p>
+                      <p className="text-[15px] font-semibold text-emerald-700">
+                        {formatNumeroBR(agregados.potencialSemVagasMaximo)} m²
+                      </p>
+                    </div>
+                  )}
+                  <p className="mt-3 text-[12px] text-slate-400">
+                    Quando ativado, soma automaticamente +10% na Área Computável Máxima Permitida, no
+                    CA Resultante Total e no "Falta (Estoura)" do topo da página — uma 5ª trilha de
+                    potencial construtivo, somada de fato (diferente do "Benefício empreendimento sem
+                    vagas" da seção Cota de Solidariedade acima, que é só um teto de referência para
+                    área de circulação não computável e nunca soma no potencial construtível).
+                  </p>
+                </SectionCard>
+                )}
+
+                <SectionCard
+                  title="Fachada Ativa"
+                  subtitle="Área do pavimento térreo destinada a comércio/serviços com fachada ativa"
+                  collapsible
+                >
+                  <p className="text-[12px] text-slate-500">
+                    Cadastre a área de fachada ativa como uma unidade na categoria{" "}
+                    <strong>"Fachada Ativa"</strong> (aba "Resumo das Unidades") e aloque-a no pavimento
+                    térreo (aba "Dados do Empreendimento"). Essa categoria já é tratada como{" "}
+                    <strong>área não computável</strong> automaticamente — a metragem lançada ali não
+                    consome o CA do empreendimento.
+                  </p>
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <p className="text-[11px] text-blue-600">Área de Fachada Ativa já alocada</p>
+                    <p className="text-[15px] font-semibold text-blue-700">
+                      {formatNumeroBR(agregados.areaFachadaAtivaAlocada)} m²
+                    </p>
+                  </div>
+                </SectionCard>
               </>
             )}
 
@@ -4677,70 +4881,6 @@ export default function EstudoViabilidadeApp() {
             )}
 
             {/* ---------------- ABA: CUSTOS / TAXAS / OUTORGAS ---------------- */}
-            {activeTab === "custos" && (
-              <div className="flex flex-col gap-6">
-                <SectionCard
-                  title="Custos / Taxas / Outorgas"
-                  subtitle="Despesas de contrapartida urbanística lançadas automaticamente a partir das demais abas"
-                >
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[700px] border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-left text-[12px] text-slate-400">
-                          <th className="py-2 pr-3 font-medium">Descrição</th>
-                          <th className="py-2 pr-3 font-medium">Origem</th>
-                          <th className="py-2 pr-3 font-medium">Base de cálculo</th>
-                          <th className="py-2 font-medium">Valor (R$)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {agregados.pagamentoFundurbAtivo ? (
-                          <tr className="border-b border-slate-100">
-                            <td className="py-2 pr-3 font-medium text-slate-700">
-                              Contrapartida Cota de Solidariedade (FUNDURB)
-                            </td>
-                            <td className="py-2 pr-3 text-slate-500">Dados do Terreno → Cota de Solidariedade</td>
-                            <td className="py-2 pr-3 text-slate-500">
-                              {formatNumeroBR(agregados.areaCotaFundurb)} m² × R${" "}
-                              {formatNumeroBR(paraNumero(valorReferenciaM2Fundurb))}/m²
-                            </td>
-                            <td className="py-2 font-semibold text-blue-700">
-                              R$ {formatNumeroBR(agregados.valorTotalFundurb)}
-                            </td>
-                          </tr>
-                        ) : (
-                          <tr>
-                            <td colSpan={4} className="py-4 text-center text-[12px] text-slate-400">
-                              Nenhum custo lançado ainda. Se o projeto adotar "Pagamento em Recursos
-                              Financeiros (FUNDURB)" na Cota de Solidariedade (aba Terreno e Zoneamento), a
-                              despesa aparece aqui automaticamente.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                      {agregados.pagamentoFundurbAtivo && (
-                        <tfoot>
-                          <tr className="font-semibold text-slate-800">
-                            <td colSpan={3} className="pt-2 pr-3 text-right">
-                              Total de custos/outorgas
-                            </td>
-                            <td className="pt-2 text-blue-700">
-                              R$ {formatNumeroBR(agregados.valorTotalFundurb)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      )}
-                    </table>
-                  </div>
-                  <p className="mt-3 text-[12px] text-slate-400">
-                    Esse valor impacta o fluxo de custos do empreendimento, mas preserva integralmente o VGV
-                    e o mix de unidades residenciais — nenhuma unidade é sacrificada para HIS físico quando
-                    essa modalidade é escolhida.
-                  </p>
-                </SectionCard>
-              </div>
-            )}
-
             {/* ---------------- ABA: INDICADORES GERAIS ---------------- */}
             {activeTab === "indicadores" && (
               <>
