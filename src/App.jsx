@@ -237,13 +237,6 @@ const SUBPREFEITURAS_SP = {
   "Vila Prudente": ["São Lucas", "Vila Prudente"],
 };
 
-// Categorias de uso para o Fator Social (Fs) — usado em cálculos de outorga onerosa
-const FS_OPCOES = [
-  { label: "Padrão (R2V/NR)", valor: 1 },
-  { label: "Mercado Popular (HMP)", valor: 0.5 },
-  { label: "Interesse Social (HIS)", valor: 0 },
-];
-
 function Field({
   label,
   unit,
@@ -809,7 +802,7 @@ const blocoVazio = () => ({
   escadas: "",
   tipoEscada: "",
   elevadores: "",
-  lajes: [lajeVaziaFactory()],
+  lajes: [],
 });
 
 // tabela: id de uma das categoriasTabelas do bloco (por padrão: "residencial" | "incentivo" | "fachadaAtiva" | "hisHmp")
@@ -883,6 +876,13 @@ const lajeVazia = lajeVaziaFactory;
 
 function aticoVazioFactory() {
   return { ...lajeVaziaFactory(), tipo: "atico", nome: "ÁTICO" };
+}
+
+// Pavimento térreo: mesmos campos de um pavimento normal (computável/não computável/unidades — NÃO
+// usa os campos exclusivos do Ático), só com tipo/nome fixos para o Quadro de Áreas de Prefeitura
+// identificar o pavimento térreo de cada bloco com segurança (em vez de adivinhar pelo nome digitado).
+function terreoVazioFactory() {
+  return { ...lajeVaziaFactory(), tipo: "terreo", nome: "TÉRREO" };
 }
 
 // Move um item de uma posição para cima (-1) ou para baixo (+1) dentro de uma lista
@@ -993,7 +993,6 @@ export default function EstudoViabilidadeApp() {
   const [gabaritoMaximoZona, setGabaritoMaximoZona] = useState("");
   const [cotaParteMaxima, setCotaParteMaxima] = useState("");
   const [cotaParteMinima, setCotaParteMinima] = useState("");
-  const [fsFatorSocial, setFsFatorSocial] = useState("");
 
   // Preenche automaticamente CA básico/máximo, TO, gabarito e cota-parte a partir do
   // Quadro 3 (Lei nº 16.402/2016) quando a zona é selecionada.
@@ -1127,6 +1126,10 @@ export default function EstudoViabilidadeApp() {
     setBlocos((lista) =>
       lista.map((b) => (b.id === blocoId ? { ...b, lajes: [...b.lajes, aticoVazioFactory()] } : b))
     );
+  const addTerreo = (blocoId) =>
+    setBlocos((lista) =>
+      lista.map((b) => (b.id === blocoId ? { ...b, lajes: [...b.lajes, terreoVazioFactory()] } : b))
+    );
   const removeLaje = (blocoId, lajeId) =>
     setBlocos((lista) =>
       lista.map((b) => (b.id === blocoId ? { ...b, lajes: b.lajes.filter((l) => l.id !== lajeId) } : b))
@@ -1222,7 +1225,6 @@ export default function EstudoViabilidadeApp() {
     if (dados.gabaritoMaximoZona !== undefined) setGabaritoMaximoZona(dados.gabaritoMaximoZona);
     if (dados.cotaParteMaxima !== undefined) setCotaParteMaxima(dados.cotaParteMaxima);
     if (dados.cotaParteMinima !== undefined) setCotaParteMinima(dados.cotaParteMinima);
-    if (dados.fsFatorSocial !== undefined) setFsFatorSocial(dados.fsFatorSocial);
     if (dados.blocos !== undefined) setBlocos(dados.blocos);
     if (dados.categoriasTabelas !== undefined) setCategoriasTabelas(dados.categoriasTabelas);
     if (dados.usoNaoResidencialAtivo !== undefined) setUsoNaoResidencialAtivo(dados.usoNaoResidencialAtivo);
@@ -1286,7 +1288,6 @@ export default function EstudoViabilidadeApp() {
       gabaritoMaximoZona,
       cotaParteMaxima,
       cotaParteMinima,
-      fsFatorSocial,
       blocos,
       categoriasTabelas,
       usoNaoResidencialAtivo,
@@ -1353,7 +1354,6 @@ export default function EstudoViabilidadeApp() {
     gabaritoMaximoZona,
     cotaParteMaxima,
     cotaParteMinima,
-    fsFatorSocial,
     blocos,
     categoriasTabelas,
     usoNaoResidencialAtivo,
@@ -1843,27 +1843,37 @@ export default function EstudoViabilidadeApp() {
     const totalBlocosGeral = blocosComputados.reduce((acc, b) => acc + b.multiplicadorBlocos, 0);
 
     // --- Quadro de Áreas de Prefeitura ---
-    // Sobresolos/Subsolos/Térreo vêm dos níveis cadastrados em Estacionamento (pelo nome do nível).
+    // Sobresolos/Subsolos vêm dos níveis cadastrados em Estacionamento (pelo nome do nível).
     const somaNiveisPorTipo = (palavraChave) =>
       niveisEstacionamentoComputados
         .filter((n) => n.nome.toLowerCase().includes(palavraChave))
         .reduce((acc, n) => acc + n.totalPavimento, 0);
     const sobresolosPrefeitura = somaNiveisPorTipo("sobresolo");
     const subsolosPrefeitura = somaNiveisPorTipo("subsolo");
+    // Térreo coberto = níveis de Estacionamento nomeados "térreo" (garagem/outros fora de qualquer
+    // bloco) + pavimentos dos BLOCOS marcados como Térreo (área computável + não computável real do
+    // pavimento térreo de cada torre — igual à planilha de referência, que soma as duas fontes).
+    // Identificação por `tipo === "terreo"` (botão "Adicionar Térreo", nome travado) é o caminho
+    // confiável — adivinhar pelo nome digitado é frágil (typo, sem acento, renomeado sem querer).
+    // Mantém o nome como reforço só para pavimentos antigos, criados antes deste botão existir.
     const terreoNiveisPrefeitura = somaNiveisPorTipo("térreo") || somaNiveisPorTipo("terreo");
-    const obrasComplementaresNum = paraNumero(obrasComplementares);
-    const terreoObrasPrefeitura = terreoNiveisPrefeitura + obrasComplementaresNum;
-
-    // Pavimentos (computável + não computável) e Ático vêm dos blocos/pavimentos, sem repetir o Ático.
-    // Cada laje é multiplicada pela "Quantidade de blocos" (torres idênticas) do seu próprio bloco.
-    const pavimentosPrefeitura = blocosComputados.reduce(
+    const ehLajeTerreo = (l) => {
+      if (l.tipo === "atico") return false;
+      if (l.tipo === "terreo") return true;
+      const nome = (l.nome || "").toLowerCase();
+      return nome.includes("térreo") || nome.includes("terreo");
+    };
+    const terreoBlocosPrefeitura = blocosComputados.reduce(
       (acc, b) =>
         acc +
         b.lajesComputadas
-          .filter((l) => l.tipo !== "atico")
-          .reduce((accL, l) => accL + (l.computavelPavimentos + l.areasComunsNaoComputaveisPavimentos) * b.multiplicadorBlocos, 0),
+          .filter(ehLajeTerreo)
+          .reduce((accL, l) => accL + (l.computavelPavimentos + l.naoComputavelTabelaPavimentos) * b.multiplicadorBlocos, 0),
       0
     );
+    const obrasComplementaresNum = paraNumero(obrasComplementares);
+    const terreoObrasPrefeitura = terreoNiveisPrefeitura + terreoBlocosPrefeitura + obrasComplementaresNum;
+
     const aticoPrefeitura = blocosComputados.reduce(
       (acc, b) =>
         acc +
@@ -1873,9 +1883,6 @@ export default function EstudoViabilidadeApp() {
       0
     );
 
-    const areaTotalPrefeituraAntiga =
-      sobresolosPrefeitura + subsolosPrefeitura + terreoObrasPrefeitura + pavimentosPrefeitura + aticoPrefeitura;
-
     // Área não computável total do projeto = Não computável de todos os blocos (já incluindo o Ático
     // inteiro) + Obras complementares + o total geral do Quadro de Estacionamento (Garagem + Outros
     // dos níveis).
@@ -1884,8 +1891,16 @@ export default function EstudoViabilidadeApp() {
       obrasComplementaresNum +
       totalGeralEstacionamento;
 
-    // Área total de prefeitura = Área computável total + Área não computável total do projeto.
+    // Área total de prefeitura = Área computável total + Área não computável total do projeto — a
+    // mesma fórmula "oficial" da planilha de referência.
     const areaTotalPrefeitura = areaComputavelTotal + areaNaoComputavelTotalProjeto;
+
+    // Pavimentos (computável + não computável) = o restante do Total depois de tirar Sobresolos,
+    // Subsolos, Térreo coberto (+ obras complementares) e Ático — igual à planilha de referência, que
+    // calcula essa linha "de trás para frente" (Total − as outras 4 linhas) em vez de somar os
+    // pavimentos direto, exatamente para garantir que as 5 linhas sempre fechem com o Total.
+    const pavimentosPrefeitura =
+      areaTotalPrefeitura - sobresolosPrefeitura - subsolosPrefeitura - terreoObrasPrefeitura - aticoPrefeitura;
 
     const indicePrivativaPrefeitura = areaTotalPrefeitura > 0 ? areaPrivativaTotal / areaTotalPrefeitura : null;
 
@@ -2132,13 +2147,41 @@ export default function EstudoViabilidadeApp() {
         ? Math.floor(areaComputavelTotal / (caMaximoZonaNum * cotaParteMinimaNum))
         : null;
 
-    // Cota-parte real do projeto = Área útil do terreno (terreno − reserva de calçada) ÷ Número
-    // total de unidades cadastradas — prioriza as unidades já alocadas nos pavimentos
-    // (totalUnidades, dado real) e só usa o campo manual "Nº de unidades do projeto" como estimativa
+    // Nº de unidades elegíveis para Cota-parte: por norma, só entram unidades do quinhão residencial
+    // (R2V, qualquer área) e unidades HIS/HMP com área computável MAIOR que 30,00 m² — unidades
+    // HIS/HMP de até 30 m², categorias de puro incentivo (Fachada Ativa, Incentivo) e o quinhão Não
+    // Residencial (NR) ficam de fora da conta (mesma regra do rodapé "Cota-parte aplica-se apenas ao
+    // quinhão e às unidades residenciais...", exibido na seção Cota-parte & Cota Ambiental).
+    const numeroUnidadesElegiveisCotaParte = blocosComputados.reduce(
+      (acc, bloco) =>
+        acc +
+        bloco.lajesComputadas.reduce((accLaje, laje) => {
+          if (laje.tipo === "atico") return accLaje;
+          return (
+            accLaje +
+            (laje.itens || []).reduce((accItem, item) => {
+              const ref = resolverUnidadeItem(item, unidadesPorId, unidadesPorDescricaoGlobal);
+              if (!ref) return accItem;
+              const ehHISouHMP = unidadeEhCategoria(ref, "HIS") || unidadeEhCategoria(ref, "HMP");
+              const elegivel = ehHISouHMP
+                ? ref.computavelUnidade > 30
+                : categoriaPorId[ref.tabela] && categoriaPorId[ref.tabela].quinhao === "residencial";
+              if (!elegivel) return accItem;
+              return accItem + item.qtd * laje.quantidadePavimentos * bloco.multiplicadorBlocos;
+            }, 0)
+          );
+        }, 0),
+      0
+    );
+
+    // Cota-parte real do projeto = Área útil do terreno (terreno − reserva de calçada) ÷ Número de
+    // unidades elegíveis para cota-parte (ver acima) — prioriza as unidades já alocadas nos
+    // pavimentos (dado real) e só usa o campo manual "Nº de unidades do projeto" como estimativa
     // enquanto o projeto ainda não tem pavimentos preenchidos. Auditada (soft warning) contra os
     // limites mínimo/máximo do Quadro 3 da zona — nunca bloqueia o preenchimento.
     const numeroUnidadesProjetoNum = paraNumero(numeroUnidadesProjeto);
-    const numeroResidenciasParaCotaParte = totalUnidades > 0 ? totalUnidades : numeroUnidadesProjetoNum;
+    const numeroResidenciasParaCotaParte =
+      numeroUnidadesElegiveisCotaParte > 0 ? numeroUnidadesElegiveisCotaParte : numeroUnidadesProjetoNum;
     const cotaParteReal =
       v4EmpreendimentoNum > 0 && numeroResidenciasParaCotaParte > 0
         ? v4EmpreendimentoNum / numeroResidenciasParaCotaParte
@@ -2147,6 +2190,22 @@ export default function EstudoViabilidadeApp() {
       cotaParteReal !== null && cotaParteMinimaNum > 0 && cotaParteReal < cotaParteMinimaNum;
     const cotaParteAcimaMaxima =
       cotaParteReal !== null && cotaParteMaximaNum > 0 && cotaParteReal > cotaParteMaximaNum;
+
+    // Fator Social (Fs): calculado automaticamente, igual à planilha de referência — não é mais uma
+    // seleção manual. Passo 1: cota-parte "de projeto" para fins de Fs = CEILING((CA utilizado ×
+    // quinhão residencial) ÷ (CA máximo da zona × Nº de unidades elegíveis para cota-parte), 0,25),
+    // com piso de 20 (mesmo mínimo normativo da cota-parte — nunca cai abaixo disso). Passo 2: Fs
+    // cresce linearmente de 1,00 (cota-parte = 20) até 2,00 (cota-parte = 30) — +0,10 de Fs a cada
+    // +1,00 m² de cota-parte — e salta para 3,00 quando a cota-parte ultrapassa 30 m² (mesma tabela
+    // de lookup "cota parte × Fs" da planilha de referência).
+    const cotaParteBaseFs =
+      caUtilizado > 0 && quinhaoResidencial > 0 && caMaximoZonaNum > 0 && numeroUnidadesElegiveisCotaParte > 0
+        ? Math.ceil((caUtilizado * quinhaoResidencial) / (caMaximoZonaNum * numeroUnidadesElegiveisCotaParte) / 0.25) *
+          0.25
+        : null;
+    const cotaParteEfetivaFs = cotaParteBaseFs !== null ? Math.max(cotaParteBaseFs, 20) : null;
+    const fsAutomatico =
+      cotaParteEfetivaFs === null ? null : cotaParteEfetivaFs > 30 ? 3 : 1 + (cotaParteEfetivaFs - 20) * 0.1;
 
     // (CA máximo com benefícios, Área computável com bônus e Potencial construtivo por uso —
     // R2V/NR/HMP/HIS — já foram calculados acima, antes da Cota de Solidariedade.)
@@ -2318,6 +2377,7 @@ export default function EstudoViabilidadeApp() {
       cotaParteReal,
       cotaParteAbaixoMinima,
       cotaParteAcimaMaxima,
+      fsAutomatico,
       caMaximoComBeneficios,
       caMaximoComBeneficiosCalculado,
       areaComputavelComBonusCotaSolidariedade,
@@ -2406,18 +2466,23 @@ export default function EstudoViabilidadeApp() {
   ]);
 
   // Derivados só para exibição no relatório de Indicadores Gerais — não realimentam nenhum outro
-  // cálculo. CA utilizado por quinhão = computável atingida em cada quinhão ÷ área do próprio
-  // quinhão (referência rápida, diferente do "CA utilizado" geral do projeto).
-  const linhaR2VPotencial = agregados.potencialPorUso.find((l) => l.uso.startsWith("R2V"));
+  // cálculo. Igual à planilha de referência: a computável atingida "residencial" é TUDO que não é
+  // NR (ou seja, R2V + HMP + HIS somados, já que os três são trilhas do quinhão residencial) — não
+  // é só a trilha R2V sozinha, senão HMP/HIS ficam de fora da conta e o CA por quinhão vem menor
+  // que o "CA total utilizado" real do projeto quando há unidades HMP/HIS.
   const linhaNRPotencial = agregados.potencialPorUso.find((l) => l.uso.startsWith("NR"));
+  const computavelNaoResidencialAtingida = linhaNRPotencial ? linhaNRPotencial.atingida : 0;
+  const computavelResidencialAtingida = agregados.areaComputavelTotal - computavelNaoResidencialAtingida;
   const caR2VUtilizadoPorQuinhao =
-    linhaR2VPotencial && agregados.quinhaoResidencial > 0
-      ? linhaR2VPotencial.atingida / agregados.quinhaoResidencial
-      : null;
+    agregados.quinhaoResidencial > 0 ? computavelResidencialAtingida / agregados.quinhaoResidencial : null;
   const caNRUtilizadoPorQuinhao =
-    linhaNRPotencial && paraNumero(quinhaoNaoResidencial) > 0
-      ? linhaNRPotencial.atingida / paraNumero(quinhaoNaoResidencial)
+    paraNumero(quinhaoNaoResidencial) > 0
+      ? computavelNaoResidencialAtingida / paraNumero(quinhaoNaoResidencial)
       : null;
+  const caResidencialPorTerrenoTotal =
+    paraNumero(areaTerreno) > 0 ? computavelResidencialAtingida / paraNumero(areaTerreno) : null;
+  const caNaoResidencialPorTerrenoTotal =
+    paraNumero(areaTerreno) > 0 ? computavelNaoResidencialAtingida / paraNumero(areaTerreno) : null;
 
   // "HIS e HMP" é uma categoria dependente da Cota de Solidariedade — some/aparece sozinha por
   // padrão junto com ela, sem precisar de um interruptor próprio.
@@ -2952,23 +3017,11 @@ export default function EstudoViabilidadeApp() {
                         </p>
                       )}
                     </div>
-                    <label className="flex flex-col gap-1.5">
-                      <span className="text-[13px] font-medium text-slate-500">Categoria de Uso (Fs)</span>
-                      <select
-                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                        value={fsFatorSocial}
-                        onChange={(e) =>
-                          setFsFatorSocial(e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                      >
-                        <option value="">Selecione...</option>
-                        {FS_OPCOES.map((op) => (
-                          <option key={op.label} value={op.valor}>
-                            {op.label} ({formatNumeroBR(op.valor)})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <Field
+                      label="Fator Social (Fs)"
+                      value={agregados.fsAutomatico !== null ? formatNumeroBR(agregados.fsAutomatico) : "calculado"}
+                      disabled
+                    />
                     <Field
                       label="Nº de unidades do projeto (estimativa)"
                       placeholder="0"
@@ -3749,10 +3802,20 @@ export default function EstudoViabilidadeApp() {
                           separadamente — o título de cada um pode ser renomeado.
                         </p>
 
+                        <button
+                          onClick={() => addTerreo(bloco.id)}
+                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2.5 text-[13px] font-medium text-slate-500 hover:border-blue-300 hover:text-blue-600"
+                        >
+                          <Plus size={15} />
+                          Adicionar Térreo
+                        </button>
+
                         <div className="mt-3 flex flex-col gap-4">
                           {bloco.lajesComputadas.map((laje, li) => {
                             const lajeMinimizada = lajesMinimizadas.has(laje.id);
                             const ehAtico = laje.tipo === "atico";
+                            const ehTerreo = laje.tipo === "terreo";
+                            const nomeBloqueado = ehAtico || ehTerreo;
                             return (
                             <div
                               key={laje.id}
@@ -3789,22 +3852,29 @@ export default function EstudoViabilidadeApp() {
                                   >
                                     <AlcaArrastar />
                                   </div>
-                                  <input
-                                    className="w-full max-w-xs rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                                    value={laje.nome}
-                                    onChange={(e) => updateLaje(bloco.id, laje.id, "nome", e.target.value)}
-                                    placeholder={li === 0 ? "Ex: Pavimento Tipo" : `Pavimento ${li + 1}`}
-                                  />
+                                  {nomeBloqueado ? (
+                                    <span
+                                      className="w-full max-w-xs rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-[13px] font-semibold text-slate-700"
+                                      title="Nome fixo — identifica este pavimento para o Quadro de Áreas de Prefeitura"
+                                    >
+                                      {laje.nome}
+                                    </span>
+                                  ) : (
+                                    <input
+                                      className="w-full max-w-xs rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                      value={laje.nome}
+                                      onChange={(e) => updateLaje(bloco.id, laje.id, "nome", e.target.value)}
+                                      placeholder={li === 0 ? "Ex: Pavimento Tipo" : `Pavimento ${li + 1}`}
+                                    />
+                                  )}
                                 </div>
-                                {bloco.lajesComputadas.length > 1 && (
-                                  <button
-                                    onClick={() => removeLaje(bloco.id, laje.id)}
-                                    className="flex shrink-0 items-center gap-1 text-[12px] font-medium text-red-500 hover:text-red-600"
-                                  >
-                                    <Trash2 size={14} />
-                                    Remover
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => removeLaje(bloco.id, laje.id)}
+                                  className="flex shrink-0 items-center gap-1 text-[12px] font-medium text-red-500 hover:text-red-600"
+                                >
+                                  <Trash2 size={14} />
+                                  Remover
+                                </button>
                               </div>
 
                               {ehAtico ? (
@@ -4721,6 +4791,21 @@ export default function EstudoViabilidadeApp() {
                   computável.
                 </p>
 
+                <div className="mt-6 max-w-xs">
+                  <Field
+                    label="Obras complementares"
+                    unit="m²"
+                    placeholder="0,00"
+                    value={obrasComplementares}
+                    onChange={(e) => setObrasComplementares(e.target.value)}
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Área construída fora dos blocos e dos níveis de Estacionamento acima (ex: guarita,
+                    depósito de lixo externo). Soma no Térreo coberto e na Área não computável total do
+                    Quadro de Áreas de Prefeitura (Indicadores Gerais).
+                  </p>
+                </div>
+
                 <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
                   {/* Total de vagas por bloco/uso */}
                   <div>
@@ -5008,7 +5093,7 @@ export default function EstudoViabilidadeApp() {
                       value={agregados.cotaParteReal !== null ? `${formatNumeroBR(agregados.cotaParteReal)} m²` : null}
                       tone={agregados.cotaParteAbaixoMinima || agregados.cotaParteAcimaMaxima ? "red" : undefined}
                     />
-                    <Kv label="Fs (fator social)" value={fsFatorSocial !== "" ? formatNumeroBR(fsFatorSocial) : null} />
+                    <Kv label="Fs (fator social)" value={agregados.fsAutomatico !== null ? formatNumeroBR(agregados.fsAutomatico) : null} />
                     <Kv
                       label="Nº de unidades (cota-parte)"
                       value={
@@ -5052,8 +5137,8 @@ export default function EstudoViabilidadeApp() {
                         CA total utilizado (por terreno total)
                       </p>
                       <div className="grid grid-cols-3 gap-3">
-                        <Kv label="Residencial" value={caR2VUtilizadoPorQuinhao !== null ? formatNumeroBR(caR2VUtilizadoPorQuinhao) : null} />
-                        <Kv label="Não residencial" value={caNRUtilizadoPorQuinhao !== null ? formatNumeroBR(caNRUtilizadoPorQuinhao) : null} />
+                        <Kv label="Residencial" value={caResidencialPorTerrenoTotal !== null ? formatNumeroBR(caResidencialPorTerrenoTotal) : null} />
+                        <Kv label="Não residencial" value={caNaoResidencialPorTerrenoTotal !== null ? formatNumeroBR(caNaoResidencialPorTerrenoTotal) : null} />
                         <Kv label="Total" value={agregados.caUtilizado !== null ? formatNumeroBR(agregados.caUtilizado) : null} />
                       </div>
                     </div>
